@@ -1,0 +1,6 @@
+export enum EstadoTrayecto {
+  EN_CURSO = "EN_CURSO",
+  FINALIZADO = "FINALIZADO",
+  INICIADO = "INICIADO",
+  PLANIFICADO = "PLANIFICADO",
+}
