@@ -2,10 +2,14 @@ import { model, models, Schema } from "mongoose";
 import { TrayectoDatos } from "../types/trayecto";
 
 const trayectoSchema = new Schema<TrayectoDatos>({
-    origen: { type: String, required: true, trim: true },
-    destino: { type: String, required: true, trim: true },
+    origenNombre: { type: String, required: true, trim: true },
+    origenLatitud: { type: Number, required: true },
+    origenLongitud: { type: Number, required: true },
+    destinoNombre: { type: String, required: true, trim: true },
+    destinoLatitud: { type: Number, required: true },
+    destinoLongitud: { type: Number, required: true },
     distanciaKm: { type: Number, required: true },
-    duracionMinutos: { 
+    duracionEstimadaMin: { 
         type: Number,
         required: true,
         validate: {
@@ -18,6 +22,7 @@ const trayectoSchema = new Schema<TrayectoDatos>({
         enum: ["EN_CURSO", "FINALIZADO", "INICIADO", "PLANIFICADO"],
         required: true,
     },
+    creadoEn: { type: Date, default: Date.now },
     iniciadoEn: { type: Date },
     finalizadoEn: { type: Date },
     usuarioId: {
