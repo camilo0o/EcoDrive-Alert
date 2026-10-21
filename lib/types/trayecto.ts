@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
-import { EstadoTrayecto } from "../enums/estado-trayecto";
+import { EstadoTrayecto } from "../enums";
 
-export interface TrayectoDatos{
+export interface TrayectoDatos {
     origenNombre: string;
     origenLatitud: number;
     origenLongitud: number;

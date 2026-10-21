@@ -1,9 +1,10 @@
 import { Types } from "mongoose";
 
 export interface AlertaDatos {
-    mensaje: String;
+    mensaje: string;
     fechaHora: Date;
-    distancia: String;
+    distanciaKm: number;
     visto: boolean;
     trayectoId: Types.ObjectId;
+    avistamientoId: Types.ObjectId;
 }
