@@ -66,3 +66,17 @@ export async function authenticateUser(
     email: user.email,
   };
 }
+
+export async function getUserById(userId: string): Promise<PublicUser | null> {
+  await connectDB();
+
+  const user = await UsuarioModel.findById(userId).exec();
+
+  if (!user) return null;
+
+  return {
+    id: user.id,
+    nombre: user.nombre,
+    email: user.email,
+  };
+}
