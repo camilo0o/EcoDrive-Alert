@@ -20,6 +20,11 @@ test("permite crear cuenta, iniciar sesión y cerrar sesión", async ({ page }) 
 
     const registerResponse = await registerResponsePromise;
     expect(registerResponse.status()).toBe(201);
+    expect(registerResponse.request().postDataJSON()).toEqual({
+        nombre: "Usuario E2E",
+        email,
+        contrasenia: password,
+    });
     await expect(page).toHaveURL(/\/login\?registered=1/);
 
     const loginForm = page.locator("form").filter({

@@ -2,7 +2,32 @@ import { NextResponse } from "next/server";
 import { registerSchema } from "@/lib/auth/schemas";
 import { AuthError } from "@/lib/auth/auth.error";
 import { registerUser } from "@/lib/services/auth.service";
+import { consumeRateLimit, getTrustedClientIp } from "@/lib/auth/rate-limit";
 export async function POST(req: Request) {
+    try {
+        const limit = await consumeRateLimit(
+            "register-ip",
+            getTrustedClientIp(req),
+            5,
+            60 * 60,
+        );
+        if (!limit.allowed) {
+            return NextResponse.json(
+                { error: "Demasiados intentos. Intenta nuevamente más tarde." },
+                {
+                    status: 429,
+                    headers: { "Retry-After": String(limit.retryAfterSeconds) },
+                },
+            );
+        }
+    } catch (error) {
+        console.error("Error aplicando límite de registro:", error);
+        return NextResponse.json(
+            { error: "No se pudo crear la cuenta." },
+            { status: 500 },
+        );
+    }
+
     let body: unknown;
     try{
         body = await req.json();

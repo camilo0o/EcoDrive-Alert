@@ -34,7 +34,6 @@ describe("servicio de autenticación", () => {
             nombre: "Ana",
             email: "ana@example.com",
             contrasenia: "unaClave123",
-            confirmacion: "unaClave123",
         });
 
         const saved = await UsuarioModel.findById(user.id)
@@ -50,7 +49,6 @@ describe("servicio de autenticación", () => {
             nombre: "Ana",
             email: "ana@example.com",
             contrasenia: "unaClave123",
-            confirmacion: "unaClave123",
         };
 
         await registerUser(input);
@@ -65,7 +63,6 @@ describe("servicio de autenticación", () => {
             nombre: "Ana",
             email: "ana@example.com",
             contrasenia: "unaClave123",
-            confirmacion: "unaClave123",
         });
 
         await expect(

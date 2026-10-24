@@ -1,5 +1,13 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Authentication security configuration
+
+Authentication routes use MongoDB-backed rate limits shared across app instances. In production, set `TRUSTED_CLIENT_IP_HEADER` to the single-IP request header that your hosting platform or reverse proxy overwrites with the client's actual IP. Do not point it at a header that clients can supply or modify. The login and registration routes fail closed if this setting is missing or invalid.
+
+The rate-limit records expire automatically through a MongoDB TTL index. The MongoDB database user must have permission to create indexes. Configure `JWT_SECRET` with at least 32 bytes of secret material as well.
+
+Production hosting must terminate TLS, redirect HTTP requests to HTTPS, and provide the configured trusted client-IP header. `Secure` on the session cookie is enabled in production, but the application code alone cannot enable TLS on the hosting provider.
+
 ## Getting Started
 
 First, run the development server:

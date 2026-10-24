@@ -1,10 +1,35 @@
 import { loginSchema } from "@/lib/auth/schemas";
 import { createSessionToken, sessionCookieOptions } from "@/lib/auth/session";
 import { authenticateUser } from "@/lib/services/auth.service";
+import { consumeRateLimit, getTrustedClientIp } from "@/lib/auth/rate-limit";
 import { NextResponse } from "next/server";
 
 
 export async function POST(request: Request) {
+    try {
+        const ipLimit = await consumeRateLimit(
+            "login-ip",
+            getTrustedClientIp(request),
+            30,
+            15 * 60,
+        );
+        if (!ipLimit.allowed) {
+            return NextResponse.json(
+                { error: "Demasiados intentos. Intenta nuevamente más tarde." },
+                {
+                    status: 429,
+                    headers: { "Retry-After": String(ipLimit.retryAfterSeconds) },
+                },
+            );
+        }
+    } catch (error) {
+        console.error("Error aplicando límite de inicio de sesión:", error);
+        return NextResponse.json(
+            { error: "No se pudo iniciar sesión." },
+            { status: 500 },
+        );
+    }
+
     let body: unknown;
     try {
         body = await request.json();
@@ -26,6 +51,22 @@ export async function POST(request: Request) {
         );
     }
     try {
+        const emailLimit = await consumeRateLimit(
+            "login-email",
+            result.data.email,
+            10,
+            15 * 60,
+        );
+        if (!emailLimit.allowed) {
+            return NextResponse.json(
+                { error: "Demasiados intentos. Intenta nuevamente más tarde." },
+                {
+                    status: 429,
+                    headers: { "Retry-After": String(emailLimit.retryAfterSeconds) },
+                },
+            );
+        }
+
         const user = await (authenticateUser(result.data));
         if (!user) {
             return NextResponse.json(

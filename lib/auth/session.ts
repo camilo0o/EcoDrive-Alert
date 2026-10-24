@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 
 const COOKIE_NAME = "session";
-const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 7; // 7 dias
+const SESSION_DURATION_SECONDS = 60 * 60 * 8; // 8 horas
 
 function getSecret(){
     const secret = process.env.JWT_SECRET;

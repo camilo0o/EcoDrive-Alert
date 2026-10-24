@@ -1,6 +1,6 @@
 "use client";
 
-import { registerSchema } from "@/lib/auth/schemas";
+import { registerFormSchema } from "@/lib/auth/schemas";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -15,7 +15,7 @@ export default function RegisterPage() {
         setError("");
 
         const formData = new FormData(event.currentTarget);
-        const result = registerSchema.safeParse({
+        const result = registerFormSchema.safeParse({
             nombre: formData.get("nombre"),
             email: formData.get("email"),
             contrasenia: formData.get("contrasenia"),
@@ -33,7 +33,11 @@ export default function RegisterPage() {
             const response = await fetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json"},
-                body: JSON.stringify(result.data),
+                body: JSON.stringify({
+                    nombre: result.data.nombre,
+                    email: result.data.email,
+                    contrasenia: result.data.contrasenia,
+                }),
             });
 
             const data: { error?: string } = await response.json();
