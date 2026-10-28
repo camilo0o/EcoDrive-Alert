@@ -16,7 +16,7 @@ export default function LogoutButton(){
         router.refresh();
     }
     return (
-        <button className="mt-6 rounded border p-2" onClick={logout}>
+        <button className="min-h-[38px] rounded-[11px] border border-[#dce5df] bg-white px-[13px] text-xs font-bold text-[#20534a] hover:bg-[#f0f6f1] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#287568]" onClick={logout}>
             Cerrar sesión
         </button>
     );

@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { createHmac } from "node:crypto";
 import { connectDB, disconnectDB } from "../../lib/db/mongodb";
@@ -69,7 +69,7 @@ async function registerAndLogin(page: Page) {
     await login(page, email, password);
 }
 
-beforeAll(async () => {
+test.beforeAll(async () => {
     await connectDB();
     await RateLimitModel.deleteMany({
         key: {
@@ -93,7 +93,7 @@ beforeAll(async () => {
     reportUserId = String(reportUser._id);
 });
 
-afterAll(async () => {
+test.afterAll(async () => {
     if (speciesId || routeId) {
         await Promise.all([
             AvistamientoModel.deleteMany({ descripcion: reportDescription }),

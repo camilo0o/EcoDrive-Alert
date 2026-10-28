@@ -10,8 +10,8 @@ import DashboardClient, { type DashboardInitialData } from "./dashboard-client";
 
 export default function DashboardPage() {
     return (
-        <main className="dashboard-shell">
-            <Suspense fallback={<p className="dashboard-loading">Cargando tu espacio...</p>}>
+        <main className="min-h-screen">
+            <Suspense fallback={<p className="py-12 text-center text-sm text-[#6d807b]">Cargando tu espacio...</p>}>
                 <DashboardContent />
             </Suspense>
         </main>
