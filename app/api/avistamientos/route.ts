@@ -3,7 +3,8 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth/require-user";
 import { EstadoAvistamiento } from "@/lib/enums";
 import { isObjectId } from "@/lib/http/params";
-import { crearAvistamiento, listarAvistamientos } from "@/lib/services/avistamiento.service";
+import { AvistamientoInvalidoError, crearAvistamiento, listarAvistamientos } from "@/lib/services/avistamiento.service";
+import { consumeRateLimit } from "@/lib/auth/rate-limit";
 
 const objectId = z.string().refine(isObjectId, "Id inválido");
 
@@ -25,7 +26,10 @@ const createSchema = z.object({
     ]),
     descripcion: z.string().trim().max(500).optional(),
     esAnonimo: z.boolean().default(false),
-}).strict();
+}).strict().refine(
+    (data) => data.km === undefined || data.rutaId !== undefined,
+    { path: ["km"], message: "Para indicar el km tenés que elegir una ruta." },
+);
 
 export async function GET(request: Request) {
     await connection();
@@ -60,6 +64,30 @@ export async function POST(request: Request) {
     const auth = await requireUser();
     if (!auth.ok) return auth.response;
 
+    try {
+        const limit = await consumeRateLimit(
+            "avistamiento-crear",
+            auth.user.id,
+            10,
+            60,
+        );
+        if (!limit.allowed) {
+            return NextResponse.json(
+                { error: "Estás reportando muy seguido. Esperá un momento." },
+                {
+                    status: 429,
+                    headers: { "Retry-After": String(limit.retryAfterSeconds) },
+                },
+            );
+        }
+    } catch (error) {
+        console.error("Error aplicando límite de avistamientos:", error);
+        return NextResponse.json(
+            { error: "No se pudo registrar el avistamiento." },
+            { status: 500 },
+        );
+    }
+
     let body: unknown;
     try {
         body = await request.json();
@@ -82,6 +110,9 @@ export async function POST(request: Request) {
         }
         return NextResponse.json({ avistamiento }, { status: 201 });
     } catch (error) {
+        if (error instanceof AvistamientoInvalidoError) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
         console.error("Error creando avistamiento:", error);
         return NextResponse.json({ error: "No se pudo registrar el avistamiento." }, { status: 500 });
     }

@@ -5,17 +5,18 @@ import { LoginInput, RegisterInput } from "../auth/schemas";
 import { connectDB } from "../db/mongodb";
 import UsuarioModel from "../models/Usuario";
 
+const DUMMY_HASH = bcrypt.hashSync("usuario-inexistente", 12);
 
 export async function registerUser(input: RegisterInput): Promise<PublicUser> {
-    await connectDB();
-    const existingUser = await UsuarioModel.exists({ email: input.email });
-     
-    if (existingUser) {
-       throw new AuthError("EMAIL_TAKEN", "El correo electrónico ya está en uso."); 
-    }
+  await connectDB();
+  const existingUser = await UsuarioModel.exists({ email: input.email });
 
-    const contraseniaHash = await bcrypt.hash(input.contrasenia, 12);
-    try {
+  if (existingUser) {
+    throw new AuthError("EMAIL_TAKEN", "El correo electrónico ya está en uso.");
+  }
+
+  const contraseniaHash = await bcrypt.hash(input.contrasenia, 12);
+  try {
     const user = await UsuarioModel.create({
       nombre: input.nombre,
       email: input.email,
@@ -51,14 +52,12 @@ export async function authenticateUser(
     .select("+contraseniaHash")
     .exec();
 
-  if (!user) return null;
-
   const passwordMatches = await bcrypt.compare(
     input.contrasenia,
-    user.contraseniaHash,
+    user?.contraseniaHash ?? DUMMY_HASH,
   );
 
-  if (!passwordMatches) return null;
+  if (!user || !passwordMatches) return null;
 
   return {
     id: user.id,

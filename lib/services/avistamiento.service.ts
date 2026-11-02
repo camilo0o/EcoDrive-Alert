@@ -5,6 +5,8 @@ import RutaModel from "../models/Ruta";
 import { EstadoAvistamiento, MetodoReporte } from "../enums";
 import type { PuntoGeo } from "../types/punto-geo";
 
+export class AvistamientoInvalidoError extends Error { }
+
 export type FiltroAvistamientos = {
     estado: EstadoAvistamiento;
     rutaId?: string;
@@ -44,10 +46,10 @@ export type NuevoAvistamiento = {
 function aPublico(doc: any, userId: string): AvistamientoPublico {
     const especie = doc.especieId && typeof doc.especieId === "object" && "nombre" in doc.especieId
         ? {
-              id: String(doc.especieId._id),
-              nombre: doc.especieId.nombre as string,
-              nivelRiesgo: doc.especieId.nivelRiesgo as string,
-          }
+            id: String(doc.especieId._id),
+            nombre: doc.especieId.nombre as string,
+            nivelRiesgo: doc.especieId.nivelRiesgo as string,
+        }
         : null;
 
     return {
@@ -112,9 +114,17 @@ export async function crearAvistamiento(
 
     const [especie, ruta] = await Promise.all([
         EspecieModel.exists({ _id: input.especieId }),
-        input.rutaId ? RutaModel.exists({ _id: input.rutaId }) : Promise.resolve(true),
+        input.rutaId
+            ? RutaModel.findById(input.rutaId).select("longitudKm").lean<{ longitudKm: number }>()
+            : Promise.resolve(null),
     ]);
-    if (!especie || !ruta) return null;
+    if (!especie || (input.rutaId && !ruta)) return null;
+
+    if (ruta && input.km !== undefined && input.km > ruta.longitudKm) {
+        throw new AvistamientoInvalidoError(
+            `El km no puede superar el largo de la ruta (${ruta.longitudKm} km).`,
+        );
+    }
 
     const ubicacion: PuntoGeo = { type: "Point", coordinates: input.coordinates };
     const doc = await AvistamientoModel.create({
