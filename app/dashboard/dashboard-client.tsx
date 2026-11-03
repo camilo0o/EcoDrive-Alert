@@ -1,9 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { AlertTriangle, ArrowRight, Check, MapPin, Plus, Route, X } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import LogoutButton from "./logout-button";
+
+const LeafletMap = dynamic(() => import("./leaflet-map"), {
+  ssr: false,
+  loading: () => <div className="grid min-h-[380px] place-items-center rounded-[14px] bg-[#f7faf7] text-sm text-[#6d807b]">Cargando mapa…</div>,
+});
 
 export type DashboardRoute = { id: string; nombre: string; longitudKm: number };
 export type DashboardSpecies = { id: string; nombre: string; nivelRiesgo: string; alias: string[] };
@@ -56,6 +62,27 @@ function riskLabel(risk: string | undefined) {
   return "Sin nivel";
 }
 
+function getDeviceLocation(): Promise<[number, number]> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error("Este navegador no permite obtener la ubicación."));
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => resolve([coords.latitude, coords.longitude]),
+      (error) => reject(new Error(
+        error.code === error.PERMISSION_DENIED
+          ? "No se concedió permiso para acceder a la ubicación."
+          : error.code === error.POSITION_UNAVAILABLE
+            ? "No se pudo determinar la ubicación del dispositivo."
+            : "La solicitud de ubicación tardó demasiado. Inténtalo de nuevo.",
+      )),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  });
+}
+
 export default function DashboardClient({
   userName,
   initialData,
@@ -75,6 +102,37 @@ export default function DashboardClient({
   const [reportError, setReportError] = useState("");
   const [reportSuccess, setReportSuccess] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState("");
+  const [reportLocationError, setReportLocationError] = useState("");
+  const reportFormRef = useRef<HTMLFormElement>(null);
+
+  async function locateDevice() {
+    setLocationLoading(true);
+    setLocationError("");
+    try {
+      setUserLocation(await getDeviceLocation());
+    } catch (locationRequestError) {
+      setLocationError(locationRequestError instanceof Error ? locationRequestError.message : "No se pudo obtener la ubicación.");
+    } finally {
+      setLocationLoading(false);
+    }
+  }
+
+  async function fillReportWithDeviceLocation() {
+    setReportLocationError("");
+    try {
+      const [latitude, longitude] = await getDeviceLocation();
+      setUserLocation([latitude, longitude]);
+      const longitudeInput = reportFormRef.current?.elements.namedItem("longitude");
+      const latitudeInput = reportFormRef.current?.elements.namedItem("latitude");
+      if (longitudeInput instanceof HTMLInputElement) longitudeInput.value = String(longitude);
+      if (latitudeInput instanceof HTMLInputElement) latitudeInput.value = String(latitude);
+    } catch (locationRequestError) {
+      setReportLocationError(locationRequestError instanceof Error ? locationRequestError.message : "No se pudo obtener la ubicación.");
+    }
+  }
 
   async function loadDashboard(nextRouteId = routeId, nextSpeciesId = speciesId) {
     setLoading(true);
@@ -278,7 +336,19 @@ export default function DashboardClient({
           {error && <p className="my-3 text-xs text-[#a33945]" role="alert">{error}</p>}
           <div className={`grid min-h-[380px] gap-[14px] ${activeView === "map" ? "grid-cols-[minmax(0,1.2fr)_minmax(270px,.8fr)] max-sm:grid-cols-1" : "grid-cols-1"}`}>
             {activeView === "map" && (
-              <div aria-hidden="true" className="min-h-[380px] rounded-[14px] bg-[#f7faf7]" />
+              <div className="relative min-h-[380px] overflow-hidden rounded-[14px] bg-[#f7faf7]">
+                <LeafletMap sightings={data.avistamientos} routes={data.rutas} userLocation={userLocation} />
+                <button
+                  className="absolute right-3 top-3 z-[1000] inline-flex min-h-[38px] items-center gap-2 rounded-[10px] border border-[#dce5df] bg-white px-3 text-[11px] font-bold text-[#20534a] shadow-md hover:bg-[#f0f6f1] disabled:cursor-wait disabled:opacity-60"
+                  disabled={locationLoading}
+                  onClick={() => void locateDevice()}
+                  type="button"
+                >
+                  <MapPin aria-hidden="true" size={15} />
+                  {locationLoading ? "Buscando…" : "Mi ubicación"}
+                </button>
+                {locationError && <p className="absolute bottom-3 left-3 right-3 z-[1000] m-0 rounded-lg bg-white/95 px-3 py-2 text-[11px] text-[#a33945] shadow" role="alert">{locationError}</p>}
+              </div>
             )}
             <div aria-label="Lista de reportes" className={`grid max-h-[380px] content-start gap-[9px] overflow-y-auto pr-[3px] ${activeView === "reports" ? "max-h-[430px] grid-cols-2 overflow-y-visible max-sm:grid-cols-1" : ""}`}>
               {loading ? (
@@ -339,7 +409,7 @@ export default function DashboardClient({
                 <button className={buttonPrimary} onClick={() => setShowReportForm(false)} type="button">Volver al mapa</button>
               </div>
             ) : (
-              <form className="grid gap-[14px]" onSubmit={(event) => void submitReport(event)}>
+              <form className="grid gap-[14px]" onSubmit={(event) => void submitReport(event)} ref={reportFormRef}>
                 <label className={fieldLabel}>
                   <span>¿Qué animal viste? <b className="text-[#be5860]">*</b></span>
                   <select className={inputClasses} name="especieId" required defaultValue="">
@@ -372,6 +442,10 @@ export default function DashboardClient({
                       <input className={inputClasses} max="90" min="-90" name="latitude" required step="any" type="number" defaultValue="-34.9011" />
                     </label>
                   </div>
+                  <button className="inline-flex min-h-[36px] w-fit items-center gap-2 rounded-[9px] border border-[#dce5df] bg-white px-3 text-[10px] font-bold text-[#20534a] hover:bg-[#f0f6f1]" onClick={() => void fillReportWithDeviceLocation()} type="button">
+                    <MapPin aria-hidden="true" size={13} /> Usar mi ubicación actual
+                  </button>
+                  {reportLocationError && <p className="m-0 text-[10px] text-[#a33945]" role="alert">{reportLocationError}</p>}
                   <small className="text-[9px] leading-relaxed text-[#6d807b]">Usa coordenadas en formato decimal. En Uruguay, la longitud suele ser negativa.</small>
                 </fieldset>
                 <label className={fieldLabel}>
