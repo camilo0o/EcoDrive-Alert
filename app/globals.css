@@ -1,6 +1,68 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/*
+  Design tokens de Fauna en Ruta.
+  Cada --color-* genera utilidades automáticamente:
+  --color-brand -> bg-brand, text-brand, border-brand, bg-brand/10, etc.
+*/
+@theme {
+  /* Marca (verdes) */
+  --color-brand: #20534a;         /* color principal: botones, links, íconos */
+  --color-brand-strong: #173d36;  /* hover de botones, títulos */
+  --color-brand-deep: #132c27;    /* fondo de overlays de modales */
+  --color-brand-accent: #287568;  /* hover de links, focus, etiquetas */
+  --color-brand-soft: #64a885;    /* indicador "en vivo", riesgo bajo en mapa */
+  --color-brand-tint: #e4f0e9;    /* fondo de íconos */
+  --color-brand-wash: #edf4ee;    /* fondo de badges */
+
+  /* Texto */
+  --color-ink: #38564d;           /* texto de inputs */
+  --color-muted: #6d807b;         /* texto secundario */
+  --color-subtle: #899a91;        /* texto terciario (fechas, notas) */
+  --color-subtle-alt: #8b9b92;    /* casi igual a subtle: candidato a unificar */
+  --color-faint: #aab8af;         /* numeración, detalles */
+  --color-faint-alt: #b0bbb3;     /* casi igual a faint: candidato a unificar */
+
+  /* Superficies */
+  --color-surface: #f7faf7;       /* placeholders, mapa vacío */
+  --color-surface-hover: #f0f6f1; /* hover de botones secundarios */
+  --color-surface-alt: #f3f6f3;   /* fondo de grupos de toggle */
+  --color-surface-input: #fbfcfb; /* fondo de inputs */
+
+  /* Bordes */
+  --color-line: #e4eae5;          /* borde de cards */
+  --color-line-soft: #e8eee8;     /* casi igual a line: candidato a unificar */
+  --color-line-alt: #e5ece6;      /* casi igual a line: candidato a unificar */
+  --color-line-input: #e0e8e1;    /* borde de inputs */
+  --color-line-strong: #dce5df;   /* borde de botones secundarios */
+
+  /* Riesgo alto / errores */
+  --color-danger: #a33945;        /* mensajes de error, riesgo alto en mapa */
+  --color-danger-soft: #ad5361;   /* íconos de alerta */
+  --color-danger-required: #be5860; /* asterisco de campo obligatorio */
+  --color-danger-map: #d97178;    /* relleno de marcador de riesgo alto */
+  --color-danger-tint: #fae9e9;   /* fondo de íconos/badges de alerta */
+
+  /* Riesgo medio */
+  --color-warning: #947a43;
+  --color-warning-map: #e2bb67;
+  --color-warning-tint: #f6f0df;
+
+  /* Info (ubicación del usuario en el mapa) */
+  --color-info: #1769aa;
+  --color-info-soft: #4aa3df;
+}
+
+/*
+  "inline" porque las variables de next/font se definen en <html> desde layout.tsx;
+  así las utilidades usan var(--font-geist-sans) directo.
+*/
+@theme inline {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 .leaflet-container {
   width: 100%;
   height: 100%;
@@ -10,7 +72,7 @@
 
 .leaflet-popup-content p.leaflet-sighting-popup-details {
   margin: 4px 0 0;
-  color: #6d807b;
+  color: var(--color-muted);
 }
 
 .leaflet-control-attribution {

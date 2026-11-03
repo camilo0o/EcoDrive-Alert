@@ -6,48 +6,42 @@ import { EstadoAvistamiento } from "@/lib/enums";
 import { listarAvistamientos } from "@/lib/services/avistamiento.service";
 import { buscarEspecies } from "@/lib/services/especie.service";
 import { listarRutas } from "@/lib/services/ruta.service";
-import DashboardClient, { type DashboardInitialData } from "./dashboard-client";
+import DashboardClient from "./dashboard-client";
+import type { DashboardInitialData } from "./types";
 
 export default function DashboardPage() {
-    return (
-        <main className="min-h-screen">
-            <Suspense fallback={<p className="py-12 text-center text-sm text-[#6d807b]">Cargando tu espacio...</p>}>
-                <DashboardContent />
-            </Suspense>
-        </main>
-    );
+  // div y no main: DashboardClient ya tiene su propio <main>.
+  return (
+    <div className="min-h-screen">
+      <Suspense fallback={<p className="py-12 text-center text-base text-muted">Cargando tu espacio…</p>}>
+        <DashboardContent />
+      </Suspense>
+    </div>
+  );
 }
 
 async function DashboardContent() {
-    const session = await getSession();
+  const session = await getSession();
+  if (!session) redirect("/login");
 
-    if (!session) {
-        redirect("/login");
-    }
+  const user = await getUserBySession(session);
+  if (!user) redirect("/login");
 
-    const user = await getUserBySession(session);
+  const [rutas, especies, sightings] = await Promise.all([
+    listarRutas(),
+    buscarEspecies(),
+    listarAvistamientos({ estado: EstadoAvistamiento.ACTIVO, limit: 100, page: 1 }, session.userId),
+  ]);
 
-    if (!user) {
-        redirect("/login");
-    }
+  const initialData: DashboardInitialData = {
+    rutas,
+    especies,
+    avistamientos: sightings.items.map((sighting) => ({
+      ...sighting,
+      fechaHora: sighting.fechaHora.toISOString(),
+    })),
+    total: sightings.total,
+  };
 
-    const [rutas, especies, sightings] = await Promise.all([
-        listarRutas(),
-        buscarEspecies(),
-        listarAvistamientos(
-            { estado: EstadoAvistamiento.ACTIVO, limit: 100, page: 1 },
-            session.userId,
-        ),
-    ]);
-    const initialData: DashboardInitialData = {
-        rutas,
-        especies,
-        avistamientos: sightings.items.map((sighting) => ({
-            ...sighting,
-            fechaHora: sighting.fechaHora.toISOString(),
-        })),
-        total: sightings.total,
-    };
-
-    return <DashboardClient initialData={initialData} userName={user.nombre} />;
+  return <DashboardClient initialData={initialData} userName={user.nombre} />;
 }
