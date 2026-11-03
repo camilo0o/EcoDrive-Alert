@@ -18,7 +18,7 @@ type SightingsPanelProps = {
   filters: Filters;
   loading: boolean;
   error: string;
-  /** Ubicación del dispositivo; se comparte con el formulario de reporte. */
+  /** Ubicación temporal del dispositivo, visible solo en el mapa de esta sesión. */
   device: DeviceLocation;
   onFiltersChange: (patch: Partial<Filters>) => void;
   onShowDetails: (id: string) => void;

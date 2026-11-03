@@ -41,6 +41,11 @@ export function MapPanel({ sightings, routes, userLocation, locating, locationEr
           {locationError}
         </p>
       )}
+      {userLocation && (
+        <p className="absolute bottom-3 left-3 z-[1000] rounded-lg bg-white/95 px-3 py-2 text-xs text-muted shadow">
+          Tu ubicación solo es visible para ti y se elimina en 2 minutos.
+        </p>
+      )}
     </div>
   );
 }

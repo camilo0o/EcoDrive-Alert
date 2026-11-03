@@ -120,24 +120,47 @@ test("la portada da acceso a registro e inicio de sesión", async ({ page }) => 
 });
 
 test("permite crear cuenta, iniciar sesión y cerrar sesión", async ({ page }) => {
+    await page.context().grantPermissions(["geolocation"]);
+    await page.context().setGeolocation({ latitude: -34.5, longitude: -56.2 });
     await registerAndLogin(page);
     await expect(page.getByText("Usuario E2E", { exact: true })).toBeVisible();
+
+    const map = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    await page.getByRole("button", { name: "Mi ubicación" }).click();
+    await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(1);
 
     await page.getByRole("button", { name: "Cerrar sesión" }).click();
     await expect(page).toHaveURL(/\/login/);
     await expect(page.getByRole("heading", { name: "Iniciar sesión" })).toBeVisible();
+
+    await login(page, reportUserEmail, reportUserPassword);
+    const otherAccountMap = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    await expect(otherAccountMap.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 });
 
 test("permite reportar, filtrar y consultar el detalle de un avistamiento", async ({ page }) => {
     await page.context().grantPermissions(["geolocation"]);
     await page.context().setGeolocation({ latitude: -34.5, longitude: -56.2 });
     await login(page, reportUserEmail, reportUserPassword);
+    const sightingsBeforeLocation = await AvistamientoModel.countDocuments({ usuarioId: reportUserId });
     let createRequests = 0;
     page.on("request", (request) => {
         if (request.url().endsWith("/api/avistamientos") && request.method() === "POST") {
             createRequests += 1;
         }
     });
+
+    const map = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    await page.getByRole("button", { name: "Mi ubicación" }).click();
+    await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(1);
+    await expect(page.getByText("Tu ubicación solo es visible para ti y se elimina en 2 minutos.")).toBeVisible();
+    expect(createRequests).toBe(0);
+    expect(await AvistamientoModel.countDocuments({ usuarioId: reportUserId })).toBe(sightingsBeforeLocation);
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Conduce con más información." })).toBeVisible();
+    const reloadedMap = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    await expect(reloadedMap.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 
     await page.getByRole("button", { name: /Reportar avistamiento/ }).click();
     await page.locator('[name="especieId"]').selectOption(speciesId);
@@ -183,7 +206,6 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
 
     await page.getByLabel("Filtrar por especie").selectOption(speciesId);
     await expect(page.getByRole("heading", { name: speciesName })).toBeVisible();
-    const map = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
     await expect(map.locator('.leaflet-overlay-pane path[fill="#d97178"]')).toHaveCount(1);
     await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 

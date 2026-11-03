@@ -43,7 +43,7 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 pb-8 sm:px-8">
-      <DashboardHeader userName={userName} />
+      <DashboardHeader onLoggedOut={device.clearLocation} userName={userName} />
 
       <main className="grid gap-8 pt-10">
         <DashboardIntro onReport={() => setReportOpen(true)} />

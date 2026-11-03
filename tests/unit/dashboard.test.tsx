@@ -1,16 +1,26 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import DashboardClient, { type DashboardInitialData } from "@/app/dashboard/dashboard-client";
+import { DEVICE_LOCATION_TTL_MS } from "@/app/dashboard/hooks/use-device-location";
 
 vi.mock("@/app/dashboard/logout-button", () => ({
   default: () => <button type="button">Cerrar sesión</button>,
 }));
 
 vi.mock("@/app/dashboard/_components/map-panel", () => ({
-  MapPanel: ({ userLocation }: { userLocation: [number, number] | null }) => (
-    <div data-testid="map-user-location">{userLocation?.join(",") ?? "sin ubicación"}</div>
+  MapPanel: ({
+    userLocation,
+    onLocate,
+  }: {
+    userLocation: [number, number] | null;
+    onLocate: () => void;
+  }) => (
+    <>
+      <button onClick={onLocate} type="button">Mi ubicación</button>
+      <div data-testid="map-user-location">{userLocation?.join(",") ?? "sin ubicación"}</div>
+    </>
   ),
 }));
 
@@ -71,6 +81,7 @@ function mockDashboardFetch() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -177,6 +188,35 @@ describe("panel de avistamientos", () => {
     const createCall = fetchMock.mock.calls.find(([, options]) => options?.method === "POST");
     expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({
       coordinates: [-56.2, -34.5],
+    });
+    expect(screen.getByTestId("map-user-location")).toHaveTextContent("sin ubicación");
+  });
+
+  it("muestra la ubicación actual solo en el mapa y la elimina al expirar", async () => {
+    vi.useFakeTimers();
+    const fetchMock = mockDashboardFetch();
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) => success({
+          coords: { latitude: -34.5, longitude: -56.2 } as GeolocationCoordinates,
+          timestamp: Date.now(),
+        } as GeolocationPosition),
+      },
+    });
+    render(<DashboardClient initialData={initialData} userName="Ana" />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Mi ubicación" }));
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("map-user-location")).toHaveTextContent("-34.5,-56.2");
+    expect(fetchMock.mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(DEVICE_LOCATION_TTL_MS);
     });
     expect(screen.getByTestId("map-user-location")).toHaveTextContent("sin ubicación");
   });

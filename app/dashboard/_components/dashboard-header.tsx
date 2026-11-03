@@ -1,7 +1,7 @@
 import { Logo } from "@/components/brand/logo";
 import LogoutButton from "../logout-button";
 
-export function DashboardHeader({ userName }: { userName: string }) {
+export function DashboardHeader({ userName, onLoggedOut }: { userName: string; onLoggedOut: () => void }) {
   return (
     <header className="flex h-20 items-center justify-between border-b border-brand/10">
       <Logo compactOnMobile />
@@ -9,7 +9,7 @@ export function DashboardHeader({ userName }: { userName: string }) {
         <span className="hidden text-base text-muted sm:inline">
           Hola, <strong className="font-semibold text-brand-strong">{userName}</strong>
         </span>
-        <LogoutButton />
+        <LogoutButton onLoggedOut={onLoggedOut} />
       </div>
     </header>
   );
