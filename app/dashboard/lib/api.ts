@@ -36,8 +36,8 @@ export async function fetchSighting(id: string) {
 
 export type NewSighting = {
   especieId: string;
-  rutaId?: string;
-  km?: number;
+  rutaId: string;
+  km: number;
   /** GeoJSON: [longitud, latitud] */
   coordinates: [number, number];
   descripcion?: string;
@@ -47,10 +47,21 @@ export type NewSighting = {
 /** Convierte los campos del formulario de reporte al cuerpo que espera la API. */
 export function sightingFromForm(formData: FormData): NewSighting {
   const text = (name: string) => String(formData.get(name) ?? "").trim();
+  const especieId = text("especieId");
+  const rutaId = text("rutaId");
+  const kmText = text("km");
+
+  if (!especieId) throw new Error("Selecciona el animal que viste.");
+  if (!rutaId) throw new Error("Selecciona una ruta.");
+  if (!kmText) throw new Error("Indica el kilómetro del avistamiento.");
+
+  const km = Number(kmText);
+  if (!Number.isFinite(km) || km < 0) throw new Error("Indica un kilómetro válido.");
+
   return {
-    especieId: text("especieId"),
-    rutaId: text("rutaId") || undefined,
-    km: text("km") ? Number(text("km")) : undefined,
+    especieId,
+    rutaId,
+    km,
     coordinates: [Number(text("longitude")), Number(text("latitude"))],
     descripcion: text("descripcion") || undefined,
     esAnonimo: formData.get("esAnonimo") === "on",

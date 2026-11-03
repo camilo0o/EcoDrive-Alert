@@ -129,14 +129,24 @@ test("permite crear cuenta, iniciar sesión y cerrar sesión", async ({ page }) 
 });
 
 test("permite reportar, filtrar y consultar el detalle de un avistamiento", async ({ page }) => {
+    await page.context().grantPermissions(["geolocation"]);
+    await page.context().setGeolocation({ latitude: -34.5, longitude: -56.2 });
     await login(page, reportUserEmail, reportUserPassword);
+    let createRequests = 0;
+    page.on("request", (request) => {
+        if (request.url().endsWith("/api/avistamientos") && request.method() === "POST") {
+            createRequests += 1;
+        }
+    });
 
     await page.getByRole("button", { name: /Reportar avistamiento/ }).click();
     await page.locator('[name="especieId"]').selectOption(speciesId);
     await page.locator('[name="rutaId"]').selectOption(routeId);
     await page.getByLabel("Kilómetro").fill("42");
-    await page.getByLabel("Longitud").fill("-56.2");
-    await page.getByLabel("Latitud").fill("-34.5");
+    await page.getByRole("button", { name: "Usar mi ubicación actual" }).click();
+    await expect(page.getByLabel("Longitud")).toHaveValue("-56.2");
+    await expect(page.getByLabel("Latitud")).toHaveValue("-34.5");
+    expect(createRequests).toBe(0);
     await page.getByLabel("Descripción (opcional)").fill(reportDescription);
     await page.getByLabel("Publicar este reporte de forma anónima").check();
 
@@ -149,6 +159,7 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
 
     const createResponse = await createResponsePromise;
     expect(createResponse.status()).toBe(201);
+    expect(createRequests).toBe(1);
     const createBody = await createResponse.json();
     expect(createBody.avistamiento).toMatchObject({
         especie: { id: speciesId, nombre: speciesName },
@@ -172,6 +183,10 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
 
     await page.getByLabel("Filtrar por especie").selectOption(speciesId);
     await expect(page.getByRole("heading", { name: speciesName })).toBeVisible();
+    const map = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    await expect(map.locator('.leaflet-overlay-pane path[fill="#d97178"]')).toHaveCount(1);
+    await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
+
     await page.getByRole("button", { name: "Reportes" }).click();
     const detailResponsePromise = page.waitForResponse(
         (response) =>

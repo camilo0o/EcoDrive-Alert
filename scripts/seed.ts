@@ -27,7 +27,7 @@ if (process.env.NODE_ENV === "production") {
     process.exit(1);
 }
 
-const SEED_EMAIL = "demo@ecodrive.test";
+const SEED_EMAIL = process.env.SEED_USER_EMAIL;
 const SEED_PASSWORD = process.env.SEED_USER_PASSWORD ?? "demo12345678";
 
 const especies = [

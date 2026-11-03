@@ -95,6 +95,7 @@ describe("crearAvistamiento", () => {
       {
         especieId: String(species._id),
         rutaId: "000000000000000000000001",
+        km: 42,
         coordinates: [-56.2, -34.5],
         esAnonimo: false,
       },
@@ -103,6 +104,8 @@ describe("crearAvistamiento", () => {
     await expect(crearAvistamiento(
       {
         especieId: "000000000000000000000001",
+        rutaId: String((await RutaModel.create({ nombre: "Ruta 1", longitudKm: 177 }))._id),
+        km: 42,
         coordinates: [-56.2, -34.5],
         esAnonimo: false,
       },

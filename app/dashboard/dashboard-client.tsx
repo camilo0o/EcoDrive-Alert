@@ -73,7 +73,6 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
         <ReportModal
           onClose={() => setReportOpen(false)}
           onCreated={() => void dashboard.reload()}
-          onLocationFound={device.setLocation}
           routes={dashboard.data.rutas}
           species={dashboard.data.especies}
         />

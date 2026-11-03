@@ -18,18 +18,15 @@ const querySchema = z.object({
 
 const createSchema = z.object({
     especieId: objectId,
-    rutaId: objectId.optional(),
-    km: z.number().finite().min(0).optional(),
+    rutaId: objectId,
+    km: z.number().finite().min(0),
     coordinates: z.tuple([
         z.number().finite().min(-180).max(180),
         z.number().finite().min(-90).max(90),
     ]),
     descripcion: z.string().trim().max(500).optional(),
     esAnonimo: z.boolean().default(false),
-}).strict().refine(
-    (data) => data.km === undefined || data.rutaId !== undefined,
-    { path: ["km"], message: "Para indicar el km tenés que elegir una ruta." },
-);
+}).strict();
 
 export async function GET(request: Request) {
     await connection();

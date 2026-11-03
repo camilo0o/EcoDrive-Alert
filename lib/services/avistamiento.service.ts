@@ -35,8 +35,8 @@ export type AvistamientoPublico = {
 
 export type NuevoAvistamiento = {
     especieId: string;
-    rutaId?: string;
-    km?: number;
+    rutaId: string;
+    km: number;
     coordinates: [number, number];
     descripcion?: string;
     esAnonimo: boolean;
@@ -114,13 +114,11 @@ export async function crearAvistamiento(
 
     const [especie, ruta] = await Promise.all([
         EspecieModel.exists({ _id: input.especieId }),
-        input.rutaId
-            ? RutaModel.findById(input.rutaId).select("longitudKm").lean<{ longitudKm: number }>()
-            : Promise.resolve(null),
+        RutaModel.findById(input.rutaId).select("longitudKm").lean<{ longitudKm: number }>(),
     ]);
-    if (!especie || (input.rutaId && !ruta)) return null;
+    if (!especie || !ruta) return null;
 
-    if (ruta && input.km !== undefined && input.km > ruta.longitudKm) {
+    if (input.km > ruta.longitudKm) {
         throw new AvistamientoInvalidoError(
             `El km no puede superar el largo de la ruta (${ruta.longitudKm} km).`,
         );

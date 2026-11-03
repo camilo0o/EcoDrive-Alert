@@ -5,12 +5,11 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/field";
 import { useDeviceLocation } from "../hooks/use-device-location";
-import type { LatLng } from "../types";
 
 // Montevideo como punto de partida.
 const DEFAULT_COORDS = { latitude: "-34.9011", longitude: "-56.1645" };
 
-export function LocationFieldset({ onLocationFound }: { onLocationFound: (coords: LatLng) => void }) {
+export function LocationFieldset() {
   const [coords, setCoords] = useState(DEFAULT_COORDS);
   const device = useDeviceLocation();
 
@@ -19,7 +18,6 @@ export function LocationFieldset({ onLocationFound }: { onLocationFound: (coords
     if (!found) return;
     const [latitude, longitude] = found;
     setCoords({ latitude: String(latitude), longitude: String(longitude) });
-    onLocationFound(found);
   }
 
   return (
@@ -53,7 +51,14 @@ export function LocationFieldset({ onLocationFound }: { onLocationFound: (coords
           />
         </Field>
       </div>
-      <Button className="w-fit" disabled={device.loading} onClick={() => void fillWithCurrentLocation()} size="sm" variant="secondary">
+      <Button
+        className="w-fit"
+        disabled={device.loading}
+        onClick={() => void fillWithCurrentLocation()}
+        size="sm"
+        type="button"
+        variant="secondary"
+      >
         <MapPin aria-hidden="true" size={16} />
         {device.loading ? "Buscando…" : "Usar mi ubicación actual"}
       </Button>

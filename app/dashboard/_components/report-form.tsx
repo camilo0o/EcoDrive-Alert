@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox, Field, Select, Textarea, Input } from "@/components/ui/field";
 import { FormMessage } from "@/components/ui/form-message";
 import { createSighting, sightingFromForm } from "../lib/api";
-import type { DashboardRoute, DashboardSpecies, LatLng } from "../types";
+import type { DashboardRoute, DashboardSpecies } from "../types";
 import { LocationFieldset } from "./location-fieldset";
 
 type ReportFormProps = {
@@ -13,12 +13,12 @@ type ReportFormProps = {
   species: DashboardSpecies[];
   onCancel: () => void;
   onCreated: () => void;
-  onLocationFound: (coords: LatLng) => void;
 };
 
-export function ReportForm({ routes, species, onCancel, onCreated, onLocationFound }: ReportFormProps) {
+export function ReportForm({ routes, species, onCancel, onCreated }: ReportFormProps) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [selectedRouteId, setSelectedRouteId] = useState("");
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -45,18 +45,31 @@ export function ReportForm({ routes, species, onCancel, onCreated, onLocationFou
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Ruta">
-          <Select defaultValue="" name="rutaId">
-            <option value="">Sin especificar</option>
+        <Field label="Ruta" required>
+          <Select
+            defaultValue=""
+            name="rutaId"
+            onChange={(event) => setSelectedRouteId(event.target.value)}
+            required
+          >
+            <option disabled value="">Selecciona una ruta</option>
             {routes.map((route) => <option key={route.id} value={route.id}>{route.nombre}</option>)}
           </Select>
         </Field>
-        <Field label="Kilómetro">
-          <Input min="0" name="km" placeholder="Ej. 148" step="0.1" type="number" />
+        <Field label="Kilómetro" required>
+          <Input
+            max={routes.find((route) => route.id === selectedRouteId)?.longitudKm}
+            min="0"
+            name="km"
+            placeholder="Ej. 148"
+            required
+            step="0.1"
+            type="number"
+          />
         </Field>
       </div>
 
-      <LocationFieldset onLocationFound={onLocationFound} />
+      <LocationFieldset />
 
       <Field label={<>Descripción <span className="font-normal text-muted">(opcional)</span></>}>
         <Textarea maxLength={500} name="descripcion" placeholder="Cuéntanos qué observaste…" rows={3} />
@@ -67,7 +80,7 @@ export function ReportForm({ routes, species, onCancel, onCreated, onLocationFou
       {error && <FormMessage>{error}</FormMessage>}
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <Button onClick={onCancel} variant="secondary">Cancelar</Button>
+        <Button onClick={onCancel} type="button" variant="secondary">Cancelar</Button>
         <Button disabled={submitting} type="submit">
           {submitting ? "Enviando…" : "Confirmar avistamiento"}
         </Button>

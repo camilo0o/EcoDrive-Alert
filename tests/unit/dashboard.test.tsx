@@ -8,6 +8,12 @@ vi.mock("@/app/dashboard/logout-button", () => ({
   default: () => <button type="button">Cerrar sesión</button>,
 }));
 
+vi.mock("@/app/dashboard/_components/map-panel", () => ({
+  MapPanel: ({ userLocation }: { userLocation: [number, number] | null }) => (
+    <div data-testid="map-user-location">{userLocation?.join(",") ?? "sin ubicación"}</div>
+  ),
+}));
+
 const route = { id: "route-1", nombre: "Ruta 1", longitudKm: 177 };
 const species = {
   id: "species-1",
@@ -110,7 +116,7 @@ describe("panel de avistamientos", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "Ruta" }), {
       target: { value: route.id },
     });
-    fireEvent.change(screen.getByLabelText("Kilómetro"), { target: { value: "42" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: /Kilómetro/ }), { target: { value: "42" } });
     fireEvent.change(screen.getByLabelText("Longitud"), { target: { value: "-56.2" } });
     fireEvent.change(screen.getByLabelText("Latitud"), { target: { value: "-34.5" } });
     fireEvent.change(screen.getByLabelText("Descripción (opcional)"), {
@@ -133,5 +139,45 @@ describe("panel de avistamientos", () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/api/avistamientos?"),
     ));
+  });
+
+  it("usar la ubicación actual no envía el formulario", async () => {
+    const fetchMock = mockDashboardFetch();
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (success: PositionCallback) => success({
+          coords: { latitude: -34.5, longitude: -56.2 } as GeolocationCoordinates,
+          timestamp: Date.now(),
+        } as GeolocationPosition),
+      },
+    });
+    render(<DashboardClient initialData={initialData} userName="Ana" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /Reportar avistamiento/ }));
+    fireEvent.change(screen.getByRole("combobox", { name: /Qué animal viste/ }), {
+      target: { value: species.id },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Ruta" }), {
+      target: { value: route.id },
+    });
+    fireEvent.change(screen.getByRole("spinbutton", { name: /Kilómetro/ }), { target: { value: "42" } });
+    fireEvent.click(screen.getByRole("button", { name: "Usar mi ubicación actual" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Latitud")).toHaveValue(-34.5));
+    expect(fetchMock.mock.calls.some(([, options]) => options?.method === "POST")).toBe(false);
+    expect(screen.getByTestId("map-user-location")).toHaveTextContent("sin ubicación");
+    expect(screen.getByRole("combobox", { name: /Qué animal viste/ })).toHaveAttribute("required");
+    expect(screen.getByRole("combobox", { name: /^Ruta/ })).toHaveAttribute("required");
+    expect(screen.getByRole("spinbutton", { name: /Kilómetro/ })).toHaveAttribute("required");
+    expect(screen.getByRole("spinbutton", { name: /Kilómetro/ })).toHaveAttribute("max", String(route.longitudKm));
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar avistamiento" }));
+    expect(await screen.findByText("El avistamiento quedó registrado. ¡Gracias por ayudar!")).toBeVisible();
+    const createCall = fetchMock.mock.calls.find(([, options]) => options?.method === "POST");
+    expect(JSON.parse(String(createCall?.[1]?.body))).toMatchObject({
+      coordinates: [-56.2, -34.5],
+    });
+    expect(screen.getByTestId("map-user-location")).toHaveTextContent("sin ubicación");
   });
 });

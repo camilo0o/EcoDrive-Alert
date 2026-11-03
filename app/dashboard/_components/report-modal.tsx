@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import type { DashboardRoute, DashboardSpecies, LatLng } from "../types";
+import type { DashboardRoute, DashboardSpecies } from "../types";
 import { ReportForm } from "./report-form";
 
 type ReportModalProps = {
@@ -12,7 +12,6 @@ type ReportModalProps = {
   species: DashboardSpecies[];
   onClose: () => void;
   onCreated: () => void;
-  onLocationFound: (coords: LatLng) => void;
 };
 
 function ReportSuccess({ onClose }: { onClose: () => void }) {
@@ -30,7 +29,7 @@ function ReportSuccess({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function ReportModal({ routes, species, onClose, onCreated, onLocationFound }: ReportModalProps) {
+export function ReportModal({ routes, species, onClose, onCreated }: ReportModalProps) {
   const [submitted, setSubmitted] = useState(false);
 
   return (
@@ -50,7 +49,6 @@ export function ReportModal({ routes, species, onClose, onCreated, onLocationFou
             setSubmitted(true);
             onCreated();
           }}
-          onLocationFound={onLocationFound}
           routes={routes}
           species={species}
         />
