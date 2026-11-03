@@ -4,6 +4,7 @@ import { PublicUser } from "../auth/auth.types";
 import { LoginInput, RegisterInput } from "../auth/schemas";
 import { connectDB } from "../db/mongodb";
 import UsuarioModel from "../models/Usuario";
+import type { Session } from "../auth/session";
 
 const DUMMY_HASH = bcrypt.hashSync("usuario-inexistente", 12);
 
@@ -45,7 +46,7 @@ export async function registerUser(input: RegisterInput): Promise<PublicUser> {
 
 export async function authenticateUser(
   input: LoginInput,
-): Promise<PublicUser | null> {
+): Promise<{ user: PublicUser; sesionVersion: number } | null> {
   await connectDB();
 
   const user = await UsuarioModel.findOne({ email: input.email })
@@ -60,22 +61,21 @@ export async function authenticateUser(
   if (!user || !passwordMatches) return null;
 
   return {
-    id: user.id,
-    nombre: user.nombre,
-    email: user.email,
+    user: { id: user.id, nombre: user.nombre, email: user.email },
+    sesionVersion: user.sesionVersion,
   };
 }
 
-export async function getUserById(userId: string): Promise<PublicUser | null> {
+export async function getUserBySession(session: Session): Promise<PublicUser | null> { // esta función obtiene el usuario a partir de la sesión, verificando la versión de sesión
   await connectDB();
+  const user = await UsuarioModel.findById(session.userId).exec();
 
-  const user = await UsuarioModel.findById(userId).exec();
+  if (!user || user.sesionVersion !== session.sesionVersion) return null;
 
-  if (!user) return null;
+  return { id: user.id, nombre: user.nombre, email: user.email };
+}
 
-  return {
-    id: user.id,
-    nombre: user.nombre,
-    email: user.email,
-  };
+export async function cerrarSesiones(userId: string): Promise<void> {
+  await connectDB();
+  await UsuarioModel.updateOne({ _id: userId }, { $inc: { sesionVersion: 1 } }).exec(); // Incrementa la versión de sesión para invalidar todas las sesiones existentes.
 }

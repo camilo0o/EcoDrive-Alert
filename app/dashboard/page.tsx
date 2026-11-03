@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { getSessionUserId } from "@/lib/auth/session";
-import { getUserById } from "@/lib/services/auth.service";
+import { getSession } from "@/lib/auth/session";
+import { getUserBySession } from "@/lib/services/auth.service";
 import { EstadoAvistamiento } from "@/lib/enums";
 import { listarAvistamientos } from "@/lib/services/avistamiento.service";
 import { buscarEspecies } from "@/lib/services/especie.service";
@@ -19,13 +19,13 @@ export default function DashboardPage() {
 }
 
 async function DashboardContent() {
-    const userId = await getSessionUserId();
+    const session = await getSession();
 
-    if (!userId) {
+    if (!session) {
         redirect("/login");
     }
 
-    const user = await getUserById(userId);
+    const user = await getUserBySession(session);
 
     if (!user) {
         redirect("/login");
@@ -36,7 +36,7 @@ async function DashboardContent() {
         buscarEspecies(),
         listarAvistamientos(
             { estado: EstadoAvistamiento.ACTIVO, limit: 100, page: 1 },
-            userId,
+            session.userId,
         ),
     ]);
     const initialData: DashboardInitialData = {

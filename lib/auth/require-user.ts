@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getSessionUserId } from "./session";
+import { getSession } from "./session";
 import type { PublicUser } from "./auth.types";
-import { getUserById } from "../services/auth.service";
+import { getUserBySession } from "../services/auth.service";
 
 export type RequireUserResult =
     | { ok: true; user: PublicUser }
@@ -19,10 +19,10 @@ function unauthorized(): RequireUserResult {
 
 export async function requireUser(): Promise<RequireUserResult> {
     try {
-        const userId = await getSessionUserId();
-        if (!userId) return unauthorized();
+        const session = await getSession();
+        if (!session) return unauthorized();
 
-        const user = await getUserById(userId);
+        const user = await getUserBySession(session);
         if (!user) return unauthorized();
 
         return { ok: true, user };

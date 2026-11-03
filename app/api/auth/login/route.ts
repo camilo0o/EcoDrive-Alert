@@ -67,16 +67,16 @@ export async function POST(request: Request) {
             );
         }
 
-        const user = await (authenticateUser(result.data));
-        if (!user) {
+        const autenticado = await authenticateUser(result.data);
+        if (!autenticado) {
             return NextResponse.json(
                 { error: "Correo electrónico o contraseña incorrectos." },
                 { status: 401 }
             );
         }
 
-        const token = await createSessionToken(user.id);
-        const response = NextResponse.json({ user });
+        const token = await createSessionToken(autenticado.user.id, autenticado.sesionVersion);
+        const response = NextResponse.json({ user: autenticado.user });
         response.cookies.set(
             "session",
             token,
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
         );
 
         return response;
-    }catch (error) {
+    } catch (error) {
         console.error("Error iniciando sesión:", error);
         return NextResponse.json(
             { error: "No se pudo iniciar sesión." },

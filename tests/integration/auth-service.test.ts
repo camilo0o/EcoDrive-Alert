@@ -70,7 +70,7 @@ describe("servicio de autenticación", () => {
             email: "ana@example.com",
             contrasenia: "unaClave123",
         }),
-        ).resolves.toMatchObject({ email: "ana@example.com" });
+        ).resolves.toMatchObject({ user: { email: "ana@example.com" } });
 
         await expect(
             authenticateUser({
