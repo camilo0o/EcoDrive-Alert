@@ -1,10 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { ArrowRight } from "lucide-react";
 import { useState } from "react";
-import { focusRing } from "@/components/ui/button";
-import { cn } from "@/lib/utils/cn";
 import { DashboardHeader } from "./_components/dashboard-header";
 import { DashboardIntro } from "./_components/dashboard-intro";
 import { ReportModal } from "./_components/report-modal";
@@ -59,14 +55,8 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
         />
       </main>
 
-      <footer className="mt-8 flex flex-col gap-3 border-t border-brand/10 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-        <span>Los avistamientos son aportes de la comunidad.</span>
-        <Link
-          className={cn("inline-flex items-center gap-1.5 rounded text-base font-semibold text-brand underline-offset-4 hover:underline", focusRing)}
-          href="/"
-        >
-          Volver al inicio <ArrowRight aria-hidden="true" size={16} />
-        </Link>
+      <footer className="mt-8 border-t border-brand/10 py-6 text-sm text-muted">
+        Los avistamientos son aportes de la comunidad.
       </footer>
 
       {reportOpen && (

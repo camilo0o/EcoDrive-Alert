@@ -1,5 +1,6 @@
 "use client";
 
+import { LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -27,8 +28,9 @@ export default function LogoutButton({ onLoggedOut }: { onLoggedOut: () => void 
   }
 
   return (
-    <Button disabled={loading} onClick={() => void logout()} size="sm" variant="secondary">
-      Cerrar sesión
+    <Button disabled={loading} onClick={() => void logout()} size="sm" variant="ghost">
+      <LogOut aria-hidden="true" size={16} />
+      {loading ? "Saliendo…" : "Cerrar sesión"}
     </Button>
   );
 }
