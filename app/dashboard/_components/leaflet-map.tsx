@@ -35,7 +35,20 @@ export default function LeafletMapView({ sightings, routes, userLocation }: Leaf
   const mapRef = useRef<LeafletMap | null>(null);
   const markersRef = useRef<LayerGroup | null>(null);
   const userMarkerRef = useRef<CircleMarker | null>(null);
+  const invalidateFrameRef = useRef<number | null>(null);
   const [mapReady, setMapReady] = useState(false);
+
+  function scheduleInvalidateSize(map: LeafletMap) {
+    if (invalidateFrameRef.current !== null) {
+      window.cancelAnimationFrame(invalidateFrameRef.current);
+    }
+    invalidateFrameRef.current = window.requestAnimationFrame(() => {
+      invalidateFrameRef.current = null;
+      if (mapRef.current === map && containerRef.current?.isConnected) {
+        map.invalidateSize();
+      }
+    });
+  }
 
   // Crear el mapa una sola vez.
   useEffect(() => {
@@ -44,7 +57,12 @@ export default function LeafletMapView({ sightings, routes, userLocation }: Leaf
     void import("leaflet").then((L) => {
       if (disposed || !containerRef.current) return;
 
-      const map = L.map(containerRef.current, { center: URUGUAY_CENTER, zoom: 6, scrollWheelZoom: false });
+      const map = L.map(containerRef.current, {
+        center: URUGUAY_CENTER,
+        zoom: 6,
+        scrollWheelZoom: false,
+        zoomAnimation: false,
+      });
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
@@ -53,15 +71,20 @@ export default function LeafletMapView({ sightings, routes, userLocation }: Leaf
       mapRef.current = map;
       markersRef.current = L.layerGroup().addTo(map);
       setMapReady(true);
-      window.requestAnimationFrame(() => map.invalidateSize());
+      scheduleInvalidateSize(map);
     });
 
     return () => {
       disposed = true;
-      mapRef.current?.remove();
+      if (invalidateFrameRef.current !== null) {
+        window.cancelAnimationFrame(invalidateFrameRef.current);
+        invalidateFrameRef.current = null;
+      }
+      const map = mapRef.current;
       mapRef.current = null;
       markersRef.current = null;
       userMarkerRef.current = null;
+      map?.remove();
     };
   }, []);
 
@@ -109,7 +132,7 @@ export default function LeafletMapView({ sightings, routes, userLocation }: Leaf
       } else {
         map.setView(URUGUAY_CENTER, 6);
       }
-      window.requestAnimationFrame(() => map.invalidateSize());
+      scheduleInvalidateSize(map);
     });
   }, [mapReady, routes, sightings, userLocation]);
 

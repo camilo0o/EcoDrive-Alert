@@ -2,23 +2,19 @@ import { expect, test, type Page } from "@playwright/test";
 import bcrypt from "bcryptjs";
 import { createHmac } from "node:crypto";
 import { connectDB, disconnectDB } from "../../lib/db/mongodb";
-import { NivelRiesgo } from "../../lib/enums";
 import AvistamientoModel from "../../lib/models/Avistamiento";
 import EspecieModel from "../../lib/models/Especie";
 import RateLimitModel from "../../lib/models/RateLimit";
-import RutaModel from "../../lib/models/Ruta";
 import UsuarioModel from "../../lib/models/Usuario";
 
 const runId = `${Date.now()}-${Math.floor(Math.random() * 1_000_000)}`;
-const speciesName = `Especie E2E ${runId}`;
-const routeName = `Ruta E2E ${runId}`;
 const reportDescription = `Reporte e2e ${runId}`;
 const reportUserEmail = `reporte-${runId}@example.com`;
 const reportUserPassword = "unaClaveSegura123";
+const inaturalistTaxonId = 74442;
 
-let speciesId: string;
-let routeId: string;
 let reportUserId: string;
+let taxonSpeciesExisted: boolean;
 
 function rateLimitKey(scope: string, identifier: string) {
     const secret = process.env.JWT_SECRET;
@@ -79,29 +75,21 @@ test.beforeAll(async () => {
             ],
         },
     });
-    const [species, route, reportUser] = await Promise.all([
-        EspecieModel.create({ nombre: speciesName, alias: [], nivelRiesgo: NivelRiesgo.ALTO }),
-        RutaModel.create({ nombre: routeName, longitudKm: 100 }),
-        UsuarioModel.create({
+    taxonSpeciesExisted = Boolean(await EspecieModel.exists({ inaturalistTaxonId }));
+    const reportUser = await UsuarioModel.create({
             nombre: "Usuario E2E Reportes",
             email: reportUserEmail,
             contraseniaHash: await bcrypt.hash(reportUserPassword, 12),
-        }),
-    ]);
-    speciesId = String(species._id);
-    routeId = String(route._id);
+        });
     reportUserId = String(reportUser._id);
 });
 
 test.afterAll(async () => {
-    if (speciesId || routeId) {
-        await Promise.all([
-            AvistamientoModel.deleteMany({ descripcion: reportDescription }),
-            speciesId ? EspecieModel.findByIdAndDelete(speciesId) : Promise.resolve(),
-            routeId ? RutaModel.findByIdAndDelete(routeId) : Promise.resolve(),
-            reportUserId ? UsuarioModel.findByIdAndDelete(reportUserId) : Promise.resolve(),
-        ]);
+    await AvistamientoModel.deleteMany({ descripcion: reportDescription });
+    if (!taxonSpeciesExisted) {
+        await EspecieModel.deleteMany({ inaturalistTaxonId });
     }
+    if (reportUserId) await UsuarioModel.findByIdAndDelete(reportUserId);
     await disconnectDB();
 });
 
@@ -139,6 +127,11 @@ test("permite crear cuenta, iniciar sesión y cerrar sesión", async ({ page }) 
 });
 
 test("permite reportar, filtrar y consultar el detalle de un avistamiento", async ({ page }) => {
+    test.setTimeout(60_000);
+    const leafletErrors: string[] = [];
+    page.on("pageerror", (error) => {
+        if (error.message.includes("_leaflet_pos")) leafletErrors.push(error.message);
+    });
     await page.context().grantPermissions(["geolocation"]);
     await page.context().setGeolocation({ latitude: -34.5, longitude: -56.2 });
     await login(page, reportUserEmail, reportUserPassword);
@@ -162,13 +155,25 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
     const reloadedMap = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
     await expect(reloadedMap.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 
+    await page.route("**/api/especies/buscar**", (route) =>
+        route.fulfill({
+            json: {
+                taxa: [{
+                    id: inaturalistTaxonId,
+                    nombreCientifico: "Hydrochoerus hydrochaeris",
+                    nombreComun: "Capybara",
+                }],
+            },
+        }),
+    );
     await page.getByRole("button", { name: /Reportar avistamiento/ }).click();
-    await page.locator('[name="especieId"]').selectOption(speciesId);
-    await page.locator('[name="rutaId"]').selectOption(routeId);
-    await page.getByLabel("Kilómetro").fill("42");
+    await page.getByRole("textbox", { name: /Qué animal viste/ }).fill("Capybara");
+    await page.getByRole("button", { name: /Capybara/ }).click();
+    await page.getByLabel("Nivel de riesgo inicial").selectOption("MEDIO");
     await page.getByRole("button", { name: "Usar mi ubicación actual" }).click();
-    await expect(page.getByLabel("Longitud")).toHaveValue("-56.2");
-    await expect(page.getByLabel("Latitud")).toHaveValue("-34.5");
+    await expect(page.getByText(/Ubicación lista/)).toBeVisible();
+    await expect(page.getByLabel("Longitud")).toHaveCount(0);
+    await expect(page.getByLabel("Latitud")).toHaveCount(0);
     expect(createRequests).toBe(0);
     await page.getByLabel("Descripción (opcional)").fill(reportDescription);
     await page.getByLabel("Publicar este reporte de forma anónima").check();
@@ -184,10 +189,17 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
     expect(createResponse.status()).toBe(201);
     expect(createRequests).toBe(1);
     const createBody = await createResponse.json();
+    const reportedSpeciesId = createBody.avistamiento.especie.id as string;
+    const reportedSpeciesName = createBody.avistamiento.especie.nombre as string;
     expect(createBody.avistamiento).toMatchObject({
-        especie: { id: speciesId, nombre: speciesName },
-        rutaId: routeId,
-        km: 42,
+        especie: {
+            id: reportedSpeciesId,
+            inaturalistTaxonId,
+            nombreCientifico: "Hydrochoerus hydrochaeris",
+            nivelRiesgo: "MEDIO",
+        },
+        rutaId: null,
+        km: null,
         ubicacion: { type: "Point", coordinates: [-56.2, -34.5] },
         descripcion: reportDescription,
         metodo: "MANUAL",
@@ -198,15 +210,13 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
     await expect(page.getByRole("dialog").getByRole("status"))
         .toContainText("El avistamiento quedó registrado");
     await page.getByRole("button", { name: "Volver al mapa" }).click();
-    await expect(page.getByRole("heading", { name: speciesName })).toBeVisible();
+    await expect(page.getByRole("heading", { name: reportedSpeciesName })).toBeVisible();
 
-    await page.getByLabel("Filtrar por ruta").selectOption(routeId);
+    await page.getByLabel("Filtrar por especie").selectOption(reportedSpeciesId);
     await expect(page.getByText("1 reporte", { exact: true })).toBeVisible();
     await expect(page.getByText(reportDescription)).toBeVisible();
-
-    await page.getByLabel("Filtrar por especie").selectOption(speciesId);
-    await expect(page.getByRole("heading", { name: speciesName })).toBeVisible();
-    await expect(map.locator('.leaflet-overlay-pane path[fill="#d97178"]')).toHaveCount(1);
+    await expect(page.getByRole("heading", { name: reportedSpeciesName })).toBeVisible();
+    await expect(map.locator('.leaflet-overlay-pane path[fill="#e2bb67"]')).toHaveCount(1);
     await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 
     await page.getByRole("button", { name: "Reportes" }).click();
@@ -223,5 +233,6 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
     await expect(detailDialog.getByRole("heading", { name: "Detalle del avistamiento" })).toBeVisible();
     await expect(detailDialog.getByText(reportDescription)).toBeVisible();
     await expect(detailDialog.getByText("Reporte anónimo")).toBeVisible();
-    await expect(detailDialog.getByText("-56.2, -34.5")).toBeVisible();
+    await expect(detailDialog.getByText("Coordenadas")).toHaveCount(0);
+    expect(leafletErrors).toEqual([]);
 });

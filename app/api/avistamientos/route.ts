@@ -1,10 +1,12 @@
 import { connection, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/require-user";
-import { EstadoAvistamiento } from "@/lib/enums";
+import { EstadoAvistamiento, NivelRiesgo } from "@/lib/enums";
 import { isObjectId } from "@/lib/http/params";
 import { AvistamientoInvalidoError, crearAvistamiento, listarAvistamientos } from "@/lib/services/avistamiento.service";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
+import { INaturalistApiError } from "@/lib/services/inaturalist.service";
+import { MtopRutaApiError } from "@/lib/services/mtop-rutas.service";
 
 const objectId = z.string().refine(isObjectId, "Id inválido");
 
@@ -16,17 +18,36 @@ const querySchema = z.object({
     page: z.coerce.number().int().min(1).default(1),
 });
 
-const createSchema = z.object({
-    especieId: objectId,
-    rutaId: objectId,
-    km: z.number().finite().min(0),
-    coordinates: z.tuple([
-        z.number().finite().min(-180).max(180),
-        z.number().finite().min(-90).max(90),
-    ]),
+const createDetailsSchema = {
+    especieId: objectId.optional(),
+    inaturalistTaxonId: z.number().int().positive().optional(),
+    nivelRiesgo: z.enum([NivelRiesgo.BAJO, NivelRiesgo.MEDIO, NivelRiesgo.ALTO]).optional(),
     descripcion: z.string().trim().max(500).optional(),
     esAnonimo: z.boolean().default(false),
-}).strict();
+};
+
+const createSchema = z.discriminatedUnion("locationMode", [
+    z.object({
+        ...createDetailsSchema,
+        locationMode: z.literal("gps"),
+        coordinates: z.tuple([
+            z.number().finite().min(-180).max(180),
+            z.number().finite().min(-90).max(90),
+        ]),
+    }).strict(),
+    z.object({
+        ...createDetailsSchema,
+        locationMode: z.literal("route-km"),
+        rutaId: objectId,
+        km: z.number().finite().min(0),
+    }).strict(),
+]).refine(
+    (data) => Boolean(data.especieId) !== Boolean(data.inaturalistTaxonId),
+    "Selecciona una especie de iNaturalist.",
+).refine(
+    (data) => !data.inaturalistTaxonId || Boolean(data.nivelRiesgo),
+    { path: ["nivelRiesgo"], message: "Indica el nivel de riesgo inicial de la especie." },
+);
 
 export async function GET(request: Request) {
     await connection();
@@ -41,7 +62,6 @@ export async function GET(request: Request) {
             { status: 400 },
         );
     }
-
     try {
         const { items, total } = await listarAvistamientos(parsed.data, auth.user.id);
         return NextResponse.json({
@@ -109,6 +129,17 @@ export async function POST(request: Request) {
     } catch (error) {
         if (error instanceof AvistamientoInvalidoError) {
             return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+        if (error instanceof INaturalistApiError) {
+            console.error("Error validando el taxón de iNaturalist:", error);
+            return NextResponse.json(
+                { error: "No se pudo validar la especie con iNaturalist. Intenta nuevamente." },
+                { status: 502 },
+            );
+        }
+        if (error instanceof MtopRutaApiError) {
+            console.error("Error resolviendo la ruta y el km en el MTOP:", error);
+            return NextResponse.json({ error: error.message }, { status: 422 });
         }
         console.error("Error creando avistamiento:", error);
         return NextResponse.json({ error: "No se pudo registrar el avistamiento." }, { status: 500 });

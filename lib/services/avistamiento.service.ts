@@ -2,8 +2,11 @@ import { connectDB } from "../db/mongodb";
 import AvistamientoModel from "../models/Avistamiento";
 import EspecieModel from "../models/Especie";
 import RutaModel from "../models/Ruta";
-import { EstadoAvistamiento, MetodoReporte } from "../enums";
+import { EstadoAvistamiento, MetodoReporte, NivelRiesgo } from "../enums";
 import type { PuntoGeo } from "../types/punto-geo";
+import { obtenerTaxonINaturalist } from "./inaturalist.service";
+import { obtenerOCrearEspecieDesdeTaxon } from "./especie.service";
+import { obtenerCoordenadaRutaKm } from "./mtop-rutas.service";
 
 export class AvistamientoInvalidoError extends Error { }
 
@@ -17,7 +20,16 @@ export type FiltroAvistamientos = {
 
 export type AvistamientoPublico = {
     id: string;
-    especie: { id: string; nombre: string; nivelRiesgo: string } | null;
+    especie: {
+        id: string;
+        nombre: string;
+        nivelRiesgo: string;
+        nombreCientifico: string | null;
+        inaturalistTaxonId: number | null;
+        fotoReferencia: string | null;
+        atribucionFoto: string | null;
+        licenciaFoto: string | null;
+    } | null;
     rutaId: string | null;
     fechaHora: Date;
     /** [longitud, latitud] (GeoJSON) */
@@ -33,22 +45,31 @@ export type AvistamientoPublico = {
     estado: string;
 };
 
-export type NuevoAvistamiento = {
-    especieId: string;
-    rutaId: string;
-    km: number;
-    coordinates: [number, number];
+type NuevoAvistamientoDetalles = {
+    especieId?: string;
+    inaturalistTaxonId?: number;
+    nivelRiesgo?: Exclude<NivelRiesgo, NivelRiesgo.SIN_CLASIFICAR>;
     descripcion?: string;
     esAnonimo: boolean;
 };
+
+export type NuevoAvistamiento = NuevoAvistamientoDetalles & (
+    | { locationMode: "gps"; coordinates: [number, number] }
+    | { locationMode: "route-km"; rutaId: string; km: number }
+);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function aPublico(doc: any, userId: string): AvistamientoPublico {
     const especie = doc.especieId && typeof doc.especieId === "object" && "nombre" in doc.especieId
         ? {
             id: String(doc.especieId._id),
-            nombre: doc.especieId.nombre as string,
+            nombre: (doc.especieId.nombreComun as string | undefined) || doc.especieId.nombre as string,
             nivelRiesgo: doc.especieId.nivelRiesgo as string,
+            nombreCientifico: (doc.especieId.nombreCientifico as string | undefined) ?? null,
+            inaturalistTaxonId: (doc.especieId.inaturalistTaxonId as number | undefined) ?? null,
+            fotoReferencia: (doc.especieId.fotoReferencia as string | undefined) ?? null,
+            atribucionFoto: (doc.especieId.atribucionFoto as string | undefined) ?? null,
+            licenciaFoto: (doc.especieId.licenciaFoto as string | undefined) ?? null,
         }
         : null;
 
@@ -85,7 +106,7 @@ export async function listarAvistamientos(
             .sort({ fechaHora: -1 })
             .skip((filtro.page - 1) * filtro.limit)
             .limit(filtro.limit)
-            .populate("especieId", "nombre nivelRiesgo")
+            .populate("especieId", "nombre nombreComun nivelRiesgo nombreCientifico inaturalistTaxonId fotoReferencia atribucionFoto licenciaFoto")
             .lean(),
         AvistamientoModel.countDocuments(query),
     ]);
@@ -100,7 +121,7 @@ export async function obtenerAvistamiento(
     await connectDB();
 
     const doc = await AvistamientoModel.findById(id)
-        .populate("especieId", "nombre nivelRiesgo")
+        .populate("especieId", "nombre nombreComun nivelRiesgo nombreCientifico inaturalistTaxonId fotoReferencia atribucionFoto licenciaFoto")
         .lean();
 
     return doc ? aPublico(doc, userId) : null;
@@ -112,31 +133,56 @@ export async function crearAvistamiento(
 ): Promise<AvistamientoPublico | null> {
     await connectDB();
 
-    const [especie, ruta] = await Promise.all([
-        EspecieModel.exists({ _id: input.especieId }),
-        RutaModel.findById(input.rutaId).select("longitudKm").lean<{ longitudKm: number }>(),
-    ]);
-    if (!especie || !ruta) return null;
+    let rutaId: string | undefined;
+    let km: number | undefined;
+    let coordinates: [number, number];
 
-    if (input.km > ruta.longitudKm) {
-        throw new AvistamientoInvalidoError(
-            `El km no puede superar el largo de la ruta (${ruta.longitudKm} km).`,
-        );
+    if (input.locationMode === "gps") {
+        coordinates = input.coordinates;
+    } else {
+        const ruta = await RutaModel.findById(input.rutaId)
+            .select("longitudKm codigoMtop")
+            .lean<{ longitudKm: number; codigoMtop?: string }>();
+        if (!ruta) return null;
+        if (input.km > ruta.longitudKm) {
+            throw new AvistamientoInvalidoError(
+                `El km no puede superar el largo de la ruta (${ruta.longitudKm} km).`,
+            );
+        }
+        if (!ruta.codigoMtop) {
+            throw new AvistamientoInvalidoError("La ruta seleccionada no tiene un trazado oficial disponible.");
+        }
+        coordinates = await obtenerCoordenadaRutaKm(ruta.codigoMtop, input.km);
+        rutaId = input.rutaId;
+        km = input.km;
     }
 
-    const ubicacion: PuntoGeo = { type: "Point", coordinates: input.coordinates };
+    let especieId = input.especieId;
+    if (input.inaturalistTaxonId) {
+        if (!input.nivelRiesgo) {
+            throw new AvistamientoInvalidoError("Indica el nivel de riesgo inicial de la especie.");
+        }
+        especieId = String((await obtenerOCrearEspecieDesdeTaxon(
+            await obtenerTaxonINaturalist(input.inaturalistTaxonId),
+            input.nivelRiesgo,
+        ))._id);
+    }
+
+    if (!especieId || !(await EspecieModel.exists({ _id: especieId }))) return null;
+
+    const ubicacion: PuntoGeo = { type: "Point", coordinates };
     const doc = await AvistamientoModel.create({
         usuarioId: userId,
-        especieId: input.especieId,
-        rutaId: input.rutaId,
-        km: input.km,
+        especieId,
+        rutaId,
+        km,
         ubicacion,
         descripcion: input.descripcion,
         metodo: MetodoReporte.MANUAL,
         esAnonimo: input.esAnonimo,
         estado: EstadoAvistamiento.ACTIVO,
     });
-    await doc.populate("especieId", "nombre nivelRiesgo");
+    await doc.populate("especieId", "nombre nombreComun nivelRiesgo nombreCientifico inaturalistTaxonId fotoReferencia atribucionFoto licenciaFoto");
 
     return aPublico(doc, userId);
 }

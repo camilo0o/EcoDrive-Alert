@@ -8,8 +8,7 @@ export async function GET() {
     if (!auth.ok) return auth.response;
 
     try {
-        const rutas = await listarRutas();
-        return NextResponse.json({ rutas });
+        return NextResponse.json(await listarRutas());
     } catch (error) {
         console.error("Error listando rutas:", error);
         return NextResponse.json({ error: "No se pudieron obtener las rutas." }, { status: 500 });

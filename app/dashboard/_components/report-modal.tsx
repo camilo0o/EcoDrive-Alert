@@ -4,12 +4,13 @@ import { Check } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
-import type { DashboardRoute, DashboardSpecies } from "../types";
+import type { DashboardRoute } from "../types";
 import { ReportForm } from "./report-form";
 
 type ReportModalProps = {
   routes: DashboardRoute[];
-  species: DashboardSpecies[];
+  rutaKmDisponible: boolean;
+  errorRutaKm: string | null;
   onClose: () => void;
   onCreated: () => void;
 };
@@ -29,7 +30,13 @@ function ReportSuccess({ onClose }: { onClose: () => void }) {
   );
 }
 
-export function ReportModal({ routes, species, onClose, onCreated }: ReportModalProps) {
+export function ReportModal({
+  routes,
+  rutaKmDisponible,
+  errorRutaKm,
+  onClose,
+  onCreated,
+}: ReportModalProps) {
   const [submitted, setSubmitted] = useState(false);
 
   return (
@@ -49,8 +56,9 @@ export function ReportModal({ routes, species, onClose, onCreated }: ReportModal
             setSubmitted(true);
             onCreated();
           }}
+          errorRutaKm={errorRutaKm}
           routes={routes}
-          species={species}
+          rutaKmDisponible={rutaKmDisponible}
         />
       )}
     </Modal>

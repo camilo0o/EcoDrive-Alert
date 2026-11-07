@@ -27,14 +27,14 @@ async function DashboardContent() {
   const user = await getUserBySession(session);
   if (!user) redirect("/login");
 
-  const [rutas, especies, sightings] = await Promise.all([
+  const [rutasResult, especies, sightings] = await Promise.all([
     listarRutas(),
     buscarEspecies(),
     listarAvistamientos({ estado: EstadoAvistamiento.ACTIVO, limit: 100, page: 1 }, session.userId),
   ]);
 
   const initialData: DashboardInitialData = {
-    rutas,
+    ...rutasResult,
     especies,
     avistamientos: sightings.items.map((sighting) => ({
       ...sighting,

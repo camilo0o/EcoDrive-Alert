@@ -3,7 +3,7 @@
  * Uso:  npx tsx scripts/seed.ts
  * Requiere MONGODB_URI (se lee de .env.local o .env si existen).
  * Es idempotente: se puede correr varias veces sin duplicar datos.
- * Las coordenadas son aproximadas y sirven solo para probar.
+ * Los avistamientos de ejemplo se ubican en las progresivas oficiales del MTOP.
  */
 import bcrypt from "bcryptjs";
 import { Types } from "mongoose";
@@ -13,6 +13,7 @@ import EspecieModel from "../lib/models/Especie";
 import RutaModel from "../lib/models/Ruta";
 import AvistamientoModel from "../lib/models/Avistamiento";
 import { EstadoAvistamiento, MetodoReporte, NivelRiesgo } from "../lib/enums";
+import { obtenerCoordenadaRutaKm } from "../lib/services/mtop-rutas.service";
 
 for (const file of [".env.local", ".env"]) {
     try {
@@ -43,25 +44,19 @@ const especies = [
 ];
 
 const rutas = [
-    { nombre: "Ruta 1", longitudKm: 177 },
-    { nombre: "Ruta 3", longitudKm: 390 },
-    { nombre: "Ruta 5", longitudKm: 509 },
-    { nombre: "Ruta 8", longitudKm: 391 },
-    { nombre: "Ruta 9", longitudKm: 340 },
+    { nombre: "Ruta 1", longitudKm: 177, codigoMtop: "1" },
+    { nombre: "Ruta 3", longitudKm: 390, codigoMtop: "3" },
+    { nombre: "Ruta 5", longitudKm: 509, codigoMtop: "5" },
+    { nombre: "Ruta 8", longitudKm: 391, codigoMtop: "8" },
+    { nombre: "Ruta 9", longitudKm: 340, codigoMtop: "9" },
 ];
 
-// [longitud, latitud] — formato GeoJSON
 const avistamientos = [
-    { especie: "Carpincho", ruta: "Ruta 1", km: 98, coords: [-57.35, -34.31], metodo: MetodoReporte.MANUAL, anonimo: false, horasAtras: 1, descripcion: "Grupo de tres cruzando cerca del arroyo" },
-    { especie: "Zorro de monte", ruta: "Ruta 1", km: 45, coords: [-56.62, -34.63], metodo: MetodoReporte.MANUAL, anonimo: true, horasAtras: 3, descripcion: null },
-    { especie: "Zorro gris", ruta: "Ruta 3", km: 56, coords: [-56.71, -34.34], metodo: MetodoReporte.MANUAL, anonimo: false, horasAtras: 2, descripcion: "Sobre la banquina" },
-    { especie: "Ciervo axis", ruta: "Ruta 5", km: 62, coords: [-56.21, -34.10], metodo: MetodoReporte.AUTOMATICO, anonimo: false, horasAtras: 0.5, descripcion: "Detectado por cámara", confianza: 0.87 },
-    { especie: "Carpincho", ruta: "Ruta 5", km: 190, coords: [-56.52, -33.38], metodo: MetodoReporte.MANUAL, anonimo: false, horasAtras: 5, descripcion: "Cruzando de noche" },
-    { especie: "Mulita", ruta: "Ruta 5", km: 35, coords: [-56.28, -34.54], metodo: MetodoReporte.MANUAL, anonimo: true, horasAtras: 8, descripcion: null },
-    { especie: "Jabalí", ruta: "Ruta 8", km: 110, coords: [-55.4, -34.38], metodo: MetodoReporte.MANUAL, anonimo: false, horasAtras: 4, descripcion: "Dos adultos" },
-    { especie: "Nutria", ruta: "Ruta 9", km: 215, coords: [-54.33, -34.48], metodo: MetodoReporte.AUDIO, anonimo: false, horasAtras: 6, descripcion: null, transcripcion: "Vi una nutria cruzando la ruta" },
-    // Expirado: sirve para probar el filtro por estado
-    { especie: "Tero", ruta: "Ruta 5", km: 70, coords: [-56.2, -34.0], metodo: MetodoReporte.MANUAL, anonimo: false, horasAtras: 72, descripcion: "Avistamiento viejo", estado: EstadoAvistamiento.EXPIRADO },
+    { especie: "Carpincho", ruta: "Ruta 5", km: 65, anonimo: false, horasAtras: 1, descripcion: "Grupo de carpinchos cerca de la ruta." },
+    { especie: "Zorro de monte", ruta: "Ruta 3", km: 70, anonimo: true, horasAtras: 3, descripcion: "Un zorro cruzó la calzada." },
+    { especie: "Ciervo axis", ruta: "Ruta 8", km: 35, anonimo: false, horasAtras: 2, descripcion: "Ciervo observado junto a la banquina." },
+    { especie: "Mulita", ruta: "Ruta 9", km: 70, anonimo: true, horasAtras: 5, descripcion: "Una mulita entre la vegetación al costado de la ruta." },
+    { especie: "Jabalí", ruta: "Ruta 1", km: 167, anonimo: false, horasAtras: 8, descripcion: "Jabalí observado cruzando la ruta." },
 ] as const;
 
 async function main() {
@@ -86,28 +81,50 @@ async function main() {
 
     const rutaIds = new Map<string, Types.ObjectId>();
     for (const r of rutas) {
-        const doc = await RutaModel.findOneAndUpdate({ nombre: r.nombre }, { $set: r }, { upsert: true, new: true });
+        const doc = await RutaModel.findOneAndUpdate(
+            { codigoMtop: r.codigoMtop },
+            { $set: r },
+            { new: true },
+        ) ?? await RutaModel.findOneAndUpdate(
+                { nombre: r.nombre },
+                { $set: r },
+                { upsert: true, new: true },
+            );
+        if (!doc) throw new Error(`No se pudo crear ${r.nombre} en el seed.`);
         rutaIds.set(r.nombre, doc._id);
     }
 
-    // Se recrean solo los avistamientos del usuario demo.
-    await AvistamientoModel.deleteMany({ usuarioId: usuario._id });
-    await AvistamientoModel.insertMany(
-        avistamientos.map((a) => ({
-            usuarioId: usuario._id,
-            especieId: especieIds.get(a.especie),
-            rutaId: rutaIds.get(a.ruta),
-            fechaHora: new Date(Date.now() - a.horasAtras * 3600_000),
-            ubicacion: { type: "Point", coordinates: [...a.coords] },
-            km: a.km,
-            descripcion: a.descripcion ?? undefined,
-            transcripcion: "transcripcion" in a ? a.transcripcion : undefined,
-            metodo: a.metodo,
-            confianza: "confianza" in a ? a.confianza : undefined,
-            esAnonimo: a.anonimo,
-            estado: "estado" in a ? a.estado : EstadoAvistamiento.ACTIVO,
-        })),
+    const avistamientosConUbicacion = await Promise.all(
+        avistamientos.map(async (avistamiento) => {
+            const ruta = rutas.find((item) => item.nombre === avistamiento.ruta);
+            if (!ruta) throw new Error(`No se encontró la ruta ${avistamiento.ruta} del seed.`);
+            const especieId = especieIds.get(avistamiento.especie);
+            const rutaId = rutaIds.get(avistamiento.ruta);
+            if (!especieId || !rutaId) {
+                throw new Error(`Faltan datos relacionados para el avistamiento de ${avistamiento.especie}.`);
+            }
+
+            return {
+                usuarioId: usuario._id,
+                especieId,
+                rutaId,
+                fechaHora: new Date(Date.now() - avistamiento.horasAtras * 3600_000),
+                ubicacion: {
+                    type: "Point" as const,
+                    coordinates: await obtenerCoordenadaRutaKm(ruta.codigoMtop, avistamiento.km),
+                },
+                km: avistamiento.km,
+                descripcion: avistamiento.descripcion,
+                metodo: MetodoReporte.MANUAL,
+                esAnonimo: avistamiento.anonimo,
+                estado: EstadoAvistamiento.ACTIVO,
+            };
+        }),
     );
+
+    // Resolver las ubicaciones antes de reemplazar los reportes del usuario demo.
+    await AvistamientoModel.deleteMany({ usuarioId: usuario._id });
+    await AvistamientoModel.insertMany(avistamientosConUbicacion);
 
     await AvistamientoModel.syncIndexes();
 

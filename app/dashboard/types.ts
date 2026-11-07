@@ -1,12 +1,46 @@
 export type LatLng = [latitude: number, longitude: number];
 
-export type DashboardRoute = { id: string; nombre: string; longitudKm: number };
+export type DashboardRoute = {
+  id: string;
+  nombre: string;
+  longitudKm: number;
+  codigoMtop?: string;
+  kmsDisponibles?: number[];
+};
 
-export type DashboardSpecies = { id: string; nombre: string; nivelRiesgo: string; alias: string[] };
+export type DashboardSpecies = {
+  id: string;
+  nombre: string;
+  nivelRiesgo: string;
+  alias: string[];
+  inaturalistTaxonId: number | null;
+  nombreCientifico: string | null;
+  fotoReferencia: string | null;
+  atribucionFoto: string | null;
+  licenciaFoto: string | null;
+};
+
+export type TaxonSuggestion = {
+  id: number;
+  nombreCientifico: string;
+  nombreComun?: string;
+  fotoReferencia?: string;
+  atribucionFoto?: string;
+  licenciaFoto?: string;
+};
 
 export type DashboardSighting = {
   id: string;
-  especie: { id: string; nombre: string; nivelRiesgo: string } | null;
+  especie: {
+    id: string;
+    nombre: string;
+    nivelRiesgo: string;
+    nombreCientifico: string | null;
+    inaturalistTaxonId: number | null;
+    fotoReferencia: string | null;
+    atribucionFoto: string | null;
+    licenciaFoto: string | null;
+  } | null;
   rutaId: string | null;
   fechaHora: string;
   /** GeoJSON: [longitud, latitud] */
@@ -23,6 +57,8 @@ export type DashboardSighting = {
 
 export type DashboardInitialData = {
   rutas: DashboardRoute[];
+  rutaKmDisponible: boolean;
+  errorRutaKm: string | null;
   especies: DashboardSpecies[];
   avistamientos: DashboardSighting[];
   total: number;

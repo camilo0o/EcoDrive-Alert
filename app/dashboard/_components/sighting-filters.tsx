@@ -23,7 +23,11 @@ export function SightingFilters({ filters, routes, species, total, loading, onCh
       <Field className="sm:w-56" label="Filtrar por especie">
         <Select onChange={(event) => onChange({ speciesId: event.target.value })} value={filters.speciesId}>
           <option value="">Todas las especies</option>
-          {species.map((item) => <option key={item.id} value={item.id}>{item.nombre}</option>)}
+          {species.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.nombre}{item.nombreCientifico ? ` (${item.nombreCientifico})` : ""}
+            </option>
+          ))}
         </Select>
       </Field>
       <span aria-live="polite" className="text-sm text-subtle sm:mb-3 sm:ml-auto">

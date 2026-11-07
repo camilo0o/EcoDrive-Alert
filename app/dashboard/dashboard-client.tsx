@@ -63,8 +63,9 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
         <ReportModal
           onClose={() => setReportOpen(false)}
           onCreated={() => void dashboard.reload()}
+          errorRutaKm={dashboard.data.errorRutaKm}
           routes={dashboard.data.rutas}
-          species={dashboard.data.especies}
+          rutaKmDisponible={dashboard.data.rutaKmDisponible}
         />
       )}
 

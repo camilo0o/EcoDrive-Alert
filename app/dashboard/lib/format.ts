@@ -10,9 +10,9 @@ export function routeName(routes: DashboardRoute[], routeId: string | null) {
   return routes.find((route) => route.id === routeId)?.nombre ?? "Ruta";
 }
 
-/** "Ruta 1 · km 42", "Ruta 1" o "Ubicación reportada". */
+/** "Ruta 1 · km 42" o "Ubicación GPS". */
 export function sightingLocationLabel(sighting: DashboardSighting, routes: DashboardRoute[]) {
-  if (!sighting.rutaId) return "Ubicación reportada";
+  if (!sighting.rutaId) return "Ubicación GPS";
   const km = sighting.km !== null ? ` · km ${sighting.km}` : "";
   return `${routeName(routes, sighting.rutaId)}${km}`;
 }
