@@ -3,7 +3,12 @@ import { z } from "zod";
 import { requireUser } from "@/lib/auth/require-user";
 import { EstadoAvistamiento, MetodoReporte, NivelRiesgo } from "@/lib/enums";
 import { isObjectId } from "@/lib/http/params";
-import { AvistamientoInvalidoError, crearAvistamiento, listarAvistamientos } from "@/lib/services/avistamiento.service";
+import {
+    AvistamientoDuplicadoError,
+    AvistamientoInvalidoError,
+    crearAvistamiento,
+    listarAvistamientos,
+} from "@/lib/services/avistamiento.service";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { INaturalistApiError } from "@/lib/services/inaturalist.service";
 import { MtopRutaApiError } from "@/lib/services/mtop-rutas.service";
@@ -142,6 +147,10 @@ export async function POST(request: Request) {
         }
         return NextResponse.json({ avistamiento }, { status: 201 });
     } catch (error) {
+        if (error instanceof AvistamientoDuplicadoError) {
+            // 409 Conflict: la petición es válida, pero choca con algo que ya existe.
+            return NextResponse.json({ error: error.message }, { status: 409 });
+        }
         if (error instanceof AvistamientoInvalidoError) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }

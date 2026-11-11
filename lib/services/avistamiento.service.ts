@@ -9,6 +9,12 @@ import { obtenerOCrearEspecieDesdeTaxon } from "./especie.service";
 import { obtenerCoordenadaRutaKm } from "./mtop-rutas.service";
 
 export class AvistamientoInvalidoError extends Error { }
+export class AvistamientoDuplicadoError extends Error { }
+
+/** Mismo usuario + misma especie dentro de esta ventana y radio = reporte duplicado. */
+export const VENTANA_DUPLICADO_MS = 2 * 60 * 1000;
+export const RADIO_DUPLICADO_METROS = 200;
+const RADIO_TIERRA_METROS = 6_378_100;
 
 export type FiltroAvistamientos = {
     estado: EstadoAvistamiento;
@@ -185,6 +191,24 @@ export async function crearAvistamiento(
         esAnonimo: input.esAnonimo,
         estado: EstadoAvistamiento.ACTIVO,
     });
+
+    // Anti-duplicados "insertar y verificar": si dos POST llegan a la vez, los dos se insertan,
+    // pero solo sobrevive el más viejo (_id menor). Un "buscar antes de insertar" no alcanza,
+    // porque los dos buscarían al mismo tiempo, no verían nada y se guardarían ambos.
+    const anterior = await AvistamientoModel.exists({
+        _id: { $lt: doc._id },
+        usuarioId: userId,
+        especieId,
+        fechaHora: { $gte: new Date(Date.now() - VENTANA_DUPLICADO_MS) },
+        ubicacion: {
+            $geoWithin: { $centerSphere: [coordinates, RADIO_DUPLICADO_METROS / RADIO_TIERRA_METROS] },
+        },
+    });
+    if (anterior) {
+        await doc.deleteOne();
+        throw new AvistamientoDuplicadoError("Ya reportaste este animal en esta zona hace un momento.");
+    }
+
     await doc.populate("especieId", "nombre nombreComun nivelRiesgo nombreCientifico inaturalistTaxonId fotoReferencia atribucionFoto licenciaFoto");
 
     return aPublico(doc, userId);

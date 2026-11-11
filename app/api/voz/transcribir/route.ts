@@ -4,6 +4,9 @@ import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { getGroq } from "@/lib/voz/groq";
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB: sobra para unos segundos de voz
+const LIMITE_POR_MINUTO = 15;
+/** Tope diario por usuario: protege la cuota de Groq aunque alguien respete el límite por minuto. */
+const LIMITE_POR_DIA = 200;
 
 export async function POST(request: Request) {
     await connection();
@@ -11,11 +14,19 @@ export async function POST(request: Request) {
     if (!auth.ok) return auth.response;
 
     try {
-        const limit = await consumeRateLimit("voz-transcribir", auth.user.id, 15, 60);
+        const limit = await consumeRateLimit("voz-transcribir", auth.user.id, LIMITE_POR_MINUTO, 60);
         if (!limit.allowed) {
             return NextResponse.json(
                 { error: "Demasiados audios seguidos. Esperá un momento." },
                 { status: 429, headers: { "Retry-After": String(limit.retryAfterSeconds) } },
+            );
+        }
+
+        const diario = await consumeRateLimit("voz-transcribir-dia", auth.user.id, LIMITE_POR_DIA, 86_400);
+        if (!diario.allowed) {
+            return NextResponse.json(
+                { error: "Llegaste al límite diario de audios. Podés seguir reportando con el formulario." },
+                { status: 429, headers: { "Retry-After": String(diario.retryAfterSeconds) } },
             );
         }
     } catch (error) {

@@ -8,7 +8,7 @@ import AvistamientoModel from "@/lib/models/Avistamiento";
 import EspecieModel from "@/lib/models/Especie";
 import RutaModel from "@/lib/models/Ruta";
 import UsuarioModel from "@/lib/models/Usuario";
-import { crearAvistamiento } from "@/lib/services/avistamiento.service";
+import { AvistamientoDuplicadoError, crearAvistamiento } from "@/lib/services/avistamiento.service";
 
 let mongo: MongoMemoryServer;
 
@@ -266,5 +266,46 @@ describe("crearAvistamiento", () => {
       ubicacion: { type: "Point", coordinates: [-56.245, -34.355] },
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("crearAvistamiento: duplicados", () => {
+  async function preparar() {
+    const [user, species] = await Promise.all([
+      UsuarioModel.create({ nombre: "Ana", email: "ana@example.com", contraseniaHash: "hash" }),
+      EspecieModel.create({ nombre: "Carpincho", alias: [], nivelRiesgo: NivelRiesgo.ALTO }),
+    ]);
+    const reporte = (coordinates: [number, number]) => crearAvistamiento(
+      { especieId: String(species._id), locationMode: "gps", coordinates, esAnonimo: false },
+      String(user._id),
+    );
+    return { reporte };
+  }
+
+  it("rechaza el mismo animal reportado dos veces en el mismo lugar", async () => {
+    const { reporte } = await preparar();
+
+    await reporte([-58.07, -32.32]);
+    await expect(reporte([-58.0705, -32.3201])).rejects.toBeInstanceOf(AvistamientoDuplicadoError); // ~50 m
+
+    expect(await AvistamientoModel.countDocuments()).toBe(1);
+  });
+
+  it("si llegan dos peticiones a la vez, guarda solo una", async () => {
+    const { reporte } = await preparar();
+
+    const resultados = await Promise.allSettled([reporte([-58.07, -32.32]), reporte([-58.07, -32.32])]);
+
+    expect(resultados.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+    expect(await AvistamientoModel.countDocuments()).toBe(1);
+  });
+
+  it("acepta el mismo animal lejos (otro ejemplar)", async () => {
+    const { reporte } = await preparar();
+
+    await reporte([-58.07, -32.32]);
+    await reporte([-58.10, -32.32]); // ~3 km
+
+    expect(await AvistamientoModel.countDocuments()).toBe(2);
   });
 });
