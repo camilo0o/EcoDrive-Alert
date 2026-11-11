@@ -7,6 +7,7 @@ import { ReportModal } from "./_components/report-modal";
 import { SightingDetailModal } from "./_components/sighting-detail-modal";
 import { SightingsPanel } from "./_components/sightings-panel";
 import { StatsGrid } from "./_components/stats-grid";
+import { TrayectoPanel } from "./_components/trayecto-panel";
 import { useDashboardData } from "./hooks/use-dashboard-data";
 import { useDeviceLocation } from "./hooks/use-device-location";
 import { fetchSighting } from "./lib/api";
@@ -43,6 +44,7 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
 
       <main className="grid gap-8 pt-10">
         <DashboardIntro onReport={() => setReportOpen(true)} />
+        <TrayectoPanel />
         <StatsGrid loading={dashboard.loading} stats={dashboard.stats} />
         <SightingsPanel
           data={dashboard.data}

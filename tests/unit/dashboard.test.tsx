@@ -93,6 +93,7 @@ function jsonResponse(body: unknown, status = 200) {
 function mockDashboardFetch() {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (url === "/api/trayectos") return jsonResponse({ trayecto: null });
     if (url === "/api/rutas") {
       return jsonResponse({ rutas: [route], rutaKmDisponible: true, errorRutaKm: null });
     }
