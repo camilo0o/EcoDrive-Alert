@@ -167,13 +167,15 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
         }),
     );
     await page.getByRole("button", { name: /Reportar avistamiento/ }).click();
+    await page.getByRole("button", { name: /^Formulario/ }).click();
+    const reportDialog = page.getByRole("dialog");
     await page.getByRole("textbox", { name: /Qué animal viste/ }).fill("Capybara");
     await page.getByRole("button", { name: /Capybara/ }).click();
     await page.getByLabel("Nivel de riesgo inicial").selectOption("MEDIO");
     await page.getByRole("button", { name: "Usar mi ubicación actual" }).click();
     await expect(page.getByText(/Ubicación lista/)).toBeVisible();
-    await expect(page.getByLabel("Longitud")).toHaveCount(0);
-    await expect(page.getByLabel("Latitud")).toHaveCount(0);
+    await expect(reportDialog.getByLabel("Longitud", { exact: true })).toHaveCount(0);
+    await expect(reportDialog.getByLabel("Latitud", { exact: true })).toHaveCount(0);
     expect(createRequests).toBe(0);
     await page.getByLabel("Descripción (opcional)").fill(reportDescription);
     await page.getByLabel("Publicar este reporte de forma anónima").check();
@@ -183,10 +185,17 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
             response.url().endsWith("/api/avistamientos") &&
             response.request().method() === "POST",
     );
+    const refreshedSightingsPromise = page.waitForResponse(
+        (response) =>
+            response.url().includes("/api/avistamientos?limit=100") &&
+            response.request().method() === "GET",
+    );
     await page.getByRole("button", { name: "Confirmar avistamiento" }).click();
 
     const createResponse = await createResponsePromise;
+    const refreshedSightings = await refreshedSightingsPromise;
     expect(createResponse.status()).toBe(201);
+    expect(refreshedSightings.status()).toBe(200);
     expect(createRequests).toBe(1);
     const createBody = await createResponse.json();
     const reportedSpeciesId = createBody.avistamiento.especie.id as string;

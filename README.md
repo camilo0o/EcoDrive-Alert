@@ -10,8 +10,9 @@ Aplicación para consultar y reportar avistamientos de fauna silvestre en las ru
 - Búsqueda de taxones en iNaturalist; los taxones usados en reportes se guardan en MongoDB junto con sus metadatos y foto de referencia.
 - Catálogo de especies y rutas cargado desde MongoDB.
 - Mapa para visualizar la ubicación de los reportes.
+- Inicio de trayecto con GPS y alertas de fauna por proximidad mientras el trayecto permanece activo.
 
-La detección automática, la planificación de trayectos y las alertas durante la navegación no están conectadas a servicios en esta versión.
+La detección automática de fauna y la planificación de rutas no están conectadas a servicios en esta versión. Para iniciar alertas se ingresa el nombre del destino y se comparte el GPS actual mientras el trayecto permanece activo; no se requieren coordenadas del destino.
 
 ## Requisitos
 

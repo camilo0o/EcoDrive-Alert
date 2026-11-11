@@ -6,10 +6,10 @@ export interface TrayectoDatos {
     origenLatitud: number;
     origenLongitud: number;
     destinoNombre: string;
-    destinoLatitud: number;
-    destinoLongitud: number;
-    distanciaKm: number;
-    duracionEstimadaMin: number;
+    destinoLatitud?: number;
+    destinoLongitud?: number;
+    distanciaKm?: number;
+    duracionEstimadaMin?: number;
     estado: EstadoTrayecto;
     creadoEn?: Date;
     iniciadoEn?: Date;

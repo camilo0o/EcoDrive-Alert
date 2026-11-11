@@ -7,12 +7,11 @@ const trayectoSchema = new Schema<TrayectoDatos>({
     origenLatitud: { type: Number, required: true, min: -90, max: 90 },
     origenLongitud: { type: Number, required: true, min: -180, max: 180 },
     destinoNombre: { type: String, required: true, trim: true },
-    destinoLatitud: { type: Number, required: true, min: -90, max: 90 },
-    destinoLongitud: { type: Number, required: true, min: -180, max: 180 },
-    distanciaKm: { type: Number, required: true, min: 0 },
+    destinoLatitud: { type: Number, min: -90, max: 90 },
+    destinoLongitud: { type: Number, min: -180, max: 180 },
+    distanciaKm: { type: Number, min: 0 },
     duracionEstimadaMin: {
         type: Number,
-        required: true,
         validate: {
             validator: Number.isInteger,
             message: "La duración debe expresarse en minutos enteros",
