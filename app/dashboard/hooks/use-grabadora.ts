@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /** iPhone graba en mp4 y Chrome/Android en webm: usamos el primero que soporte. */
 function elegirFormato(): string | undefined {
@@ -43,5 +43,19 @@ export function useGrabadora() {
         });
     }
 
-    return { grabando, empezar, detener };
+    /** Corta la grabación y descarta el audio (por ejemplo, al cerrar el modal). */
+    const cancelar = useCallback(() => {
+        const recorder = recorderRef.current;
+        if (!recorder) return;
+        recorder.onstop = null;
+        if (recorder.state !== "inactive") recorder.stop();
+        recorder.stream.getTracks().forEach((t) => t.stop());
+        recorderRef.current = null;
+        setGrabando(false);
+    }, []);
+
+    // Si el componente se desmonta grabando, liberamos el micrófono.
+    useEffect(() => cancelar, [cancelar]);
+
+    return { grabando, empezar, detener, cancelar };
 }

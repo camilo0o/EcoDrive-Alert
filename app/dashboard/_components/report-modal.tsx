@@ -1,11 +1,12 @@
 "use client";
 
-import { Check } from "lucide-react";
+import { Check, FileText, Mic } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import type { DashboardRoute } from "../types";
 import { ReportForm } from "./report-form";
+import { VoiceReport } from "./voice-report";
 
 type ReportModalProps = {
   routes: DashboardRoute[];
@@ -30,6 +31,34 @@ function ReportSuccess({ onClose }: { onClose: () => void }) {
   );
 }
 
+type ReportMode = "form" | "voice";
+
+function ModeChooser({ onChoose }: { onChoose: (mode: ReportMode) => void }) {
+  const options = [
+    { mode: "voice" as const, icon: Mic, title: "Chat de voz", text: "Contale a la app qué animal viste, sin soltar el volante." },
+    { mode: "form" as const, icon: FileText, title: "Formulario", text: "Buscá la especie y elegí la ubicación a mano." },
+  ];
+  return (
+    <div className="grid gap-3">
+      <p className="font-semibold text-brand-strong">¿Cómo querés reportarlo?</p>
+      {options.map(({ mode, icon: Icon, title, text }) => (
+        <button
+          className="flex items-center gap-4 rounded-xl border border-line p-4 text-left hover:border-brand-accent hover:bg-brand-wash"
+          key={mode}
+          onClick={() => onChoose(mode)}
+          type="button"
+        >
+          <Icon aria-hidden="true" className="shrink-0 text-brand" size={30} />
+          <span className="grid">
+            <span className="font-semibold text-brand-strong">{title}</span>
+            <span className="text-sm text-muted">{text}</span>
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function ReportModal({
   routes,
   rutaKmDisponible,
@@ -38,6 +67,11 @@ export function ReportModal({
   onCreated,
 }: ReportModalProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [mode, setMode] = useState<ReportMode | null>(null);
+  const handleCreated = () => {
+    setSubmitted(true);
+    onCreated();
+  };
 
   return (
     <Modal
@@ -49,13 +83,14 @@ export function ReportModal({
     >
       {submitted ? (
         <ReportSuccess onClose={onClose} />
+      ) : mode === null ? (
+        <ModeChooser onChoose={setMode} />
+      ) : mode === "voice" ? (
+        <VoiceReport onCancel={onClose} onCreated={handleCreated} />
       ) : (
         <ReportForm
           onCancel={onClose}
-          onCreated={() => {
-            setSubmitted(true);
-            onCreated();
-          }}
+          onCreated={handleCreated}
           errorRutaKm={errorRutaKm}
           routes={routes}
           rutaKmDisponible={rutaKmDisponible}

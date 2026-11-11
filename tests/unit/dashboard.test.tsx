@@ -154,6 +154,7 @@ describe("panel de avistamientos", () => {
     expect(screen.getByRole("heading", { name: "Carpincho" })).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: /Reportar avistamiento/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Formulario/ }));
     fireEvent.change(screen.getByRole("textbox", { name: /Qué animal viste/ }), {
       target: { value: "carpincho" },
     });
@@ -206,6 +207,7 @@ describe("panel de avistamientos", () => {
     render(<DashboardClient initialData={initialData} userName="Ana" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Reportar avistamiento/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Formulario/ }));
     fireEvent.change(screen.getByRole("textbox", { name: /Qué animal viste/ }), {
       target: { value: "carpincho" },
     });
@@ -241,6 +243,7 @@ describe("panel de avistamientos", () => {
     render(<DashboardClient initialData={initialData} userName="Ana" />);
 
     fireEvent.click(screen.getByRole("button", { name: /Reportar avistamiento/ }));
+    fireEvent.click(screen.getByRole("button", { name: /Formulario/ }));
     fireEvent.change(screen.getByRole("textbox", { name: /Qué animal viste/ }), {
       target: { value: "carpincho" },
     });

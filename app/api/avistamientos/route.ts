@@ -1,7 +1,7 @@
 import { connection, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/require-user";
-import { EstadoAvistamiento, NivelRiesgo } from "@/lib/enums";
+import { EstadoAvistamiento, MetodoReporte, NivelRiesgo } from "@/lib/enums";
 import { isObjectId } from "@/lib/http/params";
 import { AvistamientoInvalidoError, crearAvistamiento, listarAvistamientos } from "@/lib/services/avistamiento.service";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
@@ -21,9 +21,17 @@ const querySchema = z.object({
 const createDetailsSchema = {
     especieId: objectId.optional(),
     inaturalistTaxonId: z.number().int().positive().optional(),
-    nivelRiesgo: z.enum([NivelRiesgo.BAJO, NivelRiesgo.MEDIO, NivelRiesgo.ALTO]).optional(),
+    nivelRiesgo: z.enum([
+        NivelRiesgo.BAJO,
+        NivelRiesgo.MEDIO,
+        NivelRiesgo.ALTO,
+        NivelRiesgo.SIN_CLASIFICAR,
+    ]).optional(),
     descripcion: z.string().trim().max(500).optional(),
     esAnonimo: z.boolean().default(false),
+    // AUTOMATICO queda afuera: ese lo marca el servidor, no el cliente.
+    metodo: z.enum([MetodoReporte.MANUAL, MetodoReporte.AUDIO]).default(MetodoReporte.MANUAL),
+    transcripcion: z.string().trim().min(1).max(500).optional(),
 };
 
 const createSchema = z.discriminatedUnion("locationMode", [
@@ -47,6 +55,13 @@ const createSchema = z.discriminatedUnion("locationMode", [
 ).refine(
     (data) => !data.inaturalistTaxonId || Boolean(data.nivelRiesgo),
     { path: ["nivelRiesgo"], message: "Indica el nivel de riesgo inicial de la especie." },
+).refine(
+    // Por voz no le pedimos al conductor que clasifique el riesgo; en el formulario sí.
+    (data) => data.nivelRiesgo !== NivelRiesgo.SIN_CLASIFICAR || data.metodo === MetodoReporte.AUDIO,
+    { path: ["nivelRiesgo"], message: "Selecciona un nivel de riesgo." },
+).refine(
+    (data) => (data.metodo === MetodoReporte.AUDIO) === Boolean(data.transcripcion),
+    { path: ["transcripcion"], message: "La transcripción solo aplica a reportes por voz y es obligatoria en ellos." },
 );
 
 export async function GET(request: Request) {

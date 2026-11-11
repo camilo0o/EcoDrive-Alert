@@ -67,3 +67,18 @@ export type DashboardInitialData = {
 export type SightingFilters = { routeId: string; speciesId: string };
 
 export type DashboardView = "map" | "reports";
+
+/** Especie que el servidor reconoció en lo que dijo el conductor. */
+export type VoiceSpecies = {
+  especieId: string | null;
+  inaturalistTaxonId: number | null;
+  nombre: string;
+  nombreCientifico: string | null;
+  nivelRiesgo: string | null;
+  fotoReferencia: string | null;
+};
+
+export type VoiceInterpretation =
+  | { estado: "encontrada"; especie: VoiceSpecies }
+  | { estado: "ambigua"; opciones: VoiceSpecies[] }
+  | { estado: "no-entendida" };

@@ -48,9 +48,11 @@ export type AvistamientoPublico = {
 type NuevoAvistamientoDetalles = {
     especieId?: string;
     inaturalistTaxonId?: number;
-    nivelRiesgo?: Exclude<NivelRiesgo, NivelRiesgo.SIN_CLASIFICAR>;
+    nivelRiesgo?: NivelRiesgo;
     descripcion?: string;
     esAnonimo: boolean;
+    metodo?: MetodoReporte.MANUAL | MetodoReporte.AUDIO;
+    transcripcion?: string;
 };
 
 export type NuevoAvistamiento = NuevoAvistamientoDetalles & (
@@ -178,7 +180,8 @@ export async function crearAvistamiento(
         km,
         ubicacion,
         descripcion: input.descripcion,
-        metodo: MetodoReporte.MANUAL,
+        transcripcion: input.transcripcion,
+        metodo: input.metodo ?? MetodoReporte.MANUAL,
         esAnonimo: input.esAnonimo,
         estado: EstadoAvistamiento.ACTIVO,
     });

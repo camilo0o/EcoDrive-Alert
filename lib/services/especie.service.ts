@@ -30,7 +30,8 @@ function datosTaxon(taxon: TaxonDeINaturalist, nombre: string) {
 
 export async function obtenerOCrearEspecieDesdeTaxon(
     taxon: TaxonDeINaturalist,
-    nivelRiesgo: Exclude<NivelRiesgo, NivelRiesgo.SIN_CLASIFICAR>,
+    /** SIN_CLASIFICAR llega desde los reportes por voz; nunca pisa un nivel ya asignado. */
+    nivelRiesgo: NivelRiesgo,
 ) {
     await connectDB();
 
