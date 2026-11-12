@@ -43,5 +43,5 @@ async function DashboardContent() {
     total: sightings.total,
   };
 
-  return <DashboardClient initialData={initialData} userName={user.nombre} />;
+  return <DashboardClient key={session.userId} initialData={initialData} userName={user.nombre} />;
 }

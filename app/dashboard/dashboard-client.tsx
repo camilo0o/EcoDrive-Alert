@@ -15,6 +15,15 @@ import type { DashboardInitialData, DashboardSighting, LatLng, NavigationMapStat
 
 export type { DashboardInitialData, DashboardRoute, DashboardSighting, DashboardSpecies } from "./types";
 
+const EMPTY_NAVIGATION: NavigationMapState = {
+  origin: null,
+  destination: null,
+  route: null,
+  selectionMode: null,
+  currentLocation: null,
+  followUser: false,
+};
+
 type DashboardClientProps = {
   userName: string;
   initialData: DashboardInitialData;
@@ -24,14 +33,8 @@ type DashboardClientProps = {
 export default function DashboardClient({ userName, initialData }: DashboardClientProps) {
   const dashboard = useDashboardData(initialData);
   const device = useDeviceLocation();
-  const [navigation, setNavigation] = useState<NavigationMapState>({
-    origin: null,
-    destination: null,
-    route: null,
-    selectionMode: null,
-    currentLocation: null,
-    followUser: false,
-  });
+  const [navigation, setNavigation] = useState<NavigationMapState>(EMPTY_NAVIGATION);
+  const [trayectoPanelKey, setTrayectoPanelKey] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
   const [detail, setDetail] = useState<{ sighting: DashboardSighting | null; loading: boolean } | null>(null);
 
@@ -47,6 +50,14 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
     });
   }, []);
 
+  function resetUserState() {
+    device.clearLocation();
+    setNavigation(EMPTY_NAVIGATION);
+    setTrayectoPanelKey((current) => current + 1);
+    setReportOpen(false);
+    setDetail(null);
+  }
+
   async function showDetails(id: string) {
     setDetail({ sighting: null, loading: true });
     try {
@@ -60,11 +71,11 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 pb-8 sm:px-8">
-      <DashboardHeader onLoggedOut={device.clearLocation} userName={userName} />
+      <DashboardHeader onLoggedOut={resetUserState} userName={userName} />
 
       <main className="grid gap-8 pt-10">
         <DashboardIntro onReport={() => setReportOpen(true)} />
-        <TrayectoPanel navigation={navigation} onNavigationChange={setNavigation} />
+        <TrayectoPanel key={trayectoPanelKey} navigation={navigation} onNavigationChange={setNavigation} />
         <StatsGrid loading={dashboard.loading} stats={dashboard.stats} />
         <SightingsPanel
           data={dashboard.data}
