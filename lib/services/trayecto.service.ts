@@ -11,13 +11,20 @@ export type CoordenadaTrayecto = {
 
 export type IniciarTrayectoInput = {
   origen: CoordenadaTrayecto;
+  destino: CoordenadaTrayecto;
   destinoNombre: string;
+  distanciaKm: number;
+  duracionEstimadaMin: number;
 };
 
 export type TrayectoPublico = {
   id: string;
   origenNombre: string;
   destinoNombre: string;
+  origen: CoordenadaTrayecto;
+  destino: CoordenadaTrayecto | null;
+  distanciaKm: number | null;
+  duracionEstimadaMin: number | null;
   estado: EstadoTrayecto;
 };
 
@@ -30,6 +37,12 @@ function aPublico(trayecto: TrayectoDocument): TrayectoPublico {
     id: String(trayecto._id),
     origenNombre: trayecto.origenNombre,
     destinoNombre: trayecto.destinoNombre,
+    origen: { lat: trayecto.origenLatitud, lng: trayecto.origenLongitud },
+    destino: typeof trayecto.destinoLatitud === "number" && typeof trayecto.destinoLongitud === "number"
+      ? { lat: trayecto.destinoLatitud, lng: trayecto.destinoLongitud }
+      : null,
+    distanciaKm: trayecto.distanciaKm ?? null,
+    duracionEstimadaMin: trayecto.duracionEstimadaMin ?? null,
     estado: trayecto.estado,
   };
 }
@@ -58,10 +71,14 @@ export async function iniciarTrayecto(
   if (existente) throw new TrayectoEnCursoExistenteError("Ya tienes un trayecto en curso.");
 
   const trayecto = await TrayectoModel.create({
-    origenNombre: "Ubicación actual",
+    origenNombre: "Punto A",
     origenLatitud: input.origen.lat,
     origenLongitud: input.origen.lng,
     destinoNombre: input.destinoNombre,
+    destinoLatitud: input.destino.lat,
+    destinoLongitud: input.destino.lng,
+    distanciaKm: input.distanciaKm,
+    duracionEstimadaMin: input.duracionEstimadaMin,
     estado: EstadoTrayecto.EN_CURSO,
     iniciadoEn: new Date(),
     usuarioId: userObjectId,

@@ -6,6 +6,8 @@ import type { DeviceLocation } from "../hooks/use-device-location";
 import type {
   DashboardInitialData,
   DashboardView,
+  LatLng,
+  NavigationMapState,
   SightingFilters as Filters,
 } from "../types";
 import { MapPanel } from "./map-panel";
@@ -20,12 +22,14 @@ type SightingsPanelProps = {
   error: string;
   /** Ubicación temporal del dispositivo, visible solo en el mapa de esta sesión. */
   device: DeviceLocation;
+  navigation: NavigationMapState;
   onFiltersChange: (patch: Partial<Filters>) => void;
   onShowDetails: (id: string) => void;
+  onMapPointSelect: (point: LatLng) => void;
 };
 
 export function SightingsPanel(props: SightingsPanelProps) {
-  const { data, filters, loading, error, device, onFiltersChange, onShowDetails } = props;
+  const { data, filters, loading, error, device, navigation, onFiltersChange, onShowDetails, onMapPointSelect } = props;
   const [view, setView] = useState<DashboardView>("map");
 
   return (
@@ -54,6 +58,8 @@ export function SightingsPanel(props: SightingsPanelProps) {
             locating={device.loading}
             locationError={device.error}
             onLocate={() => void device.locate()}
+            navigation={navigation}
+            onMapPointSelect={onMapPointSelect}
             routes={data.rutas}
             sightings={data.avistamientos}
             userLocation={device.location}

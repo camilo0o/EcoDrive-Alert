@@ -14,7 +14,10 @@ const origenSchema = z.object({
 
 const iniciarSchema = z.object({
   origen: origenSchema,
+  destino: origenSchema,
   destinoNombre: z.string().trim().min(1).max(100),
+  distanciaKm: z.number().finite().positive().max(2500),
+  duracionEstimadaMin: z.number().int().positive().max(2880),
 }).strict();
 
 export async function GET() {

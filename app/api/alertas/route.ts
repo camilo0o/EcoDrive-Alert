@@ -20,7 +20,7 @@ const getSchema = z.object({
 const checkSchema = z.object({
   trayectoId: z.string().refine(isObjectId, "Id de trayecto inválido."),
   location: puntoSchema,
-  radioMetros: z.coerce.number().min(10).max(2000).default(200),
+  radioMetros: z.coerce.number().min(10).max(2000).default(500),
 });
 
 export async function GET(request: Request) {
@@ -43,7 +43,10 @@ export async function GET(request: Request) {
 
   try {
     const alertas = await listarAlertasPorTrayecto(parsed.data.trayectoId, auth.user.id);
-    return NextResponse.json({ alertas }, { status: 200 });
+    return NextResponse.json({ alertas }, {
+      status: 200,
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (error) {
     console.error("Error listando alertas:", error);
     return NextResponse.json({ error: "No se pudieron obtener las alertas." }, { status: 500 });

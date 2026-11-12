@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { DashboardHeader } from "./_components/dashboard-header";
 import { DashboardIntro } from "./_components/dashboard-intro";
 import { ReportModal } from "./_components/report-modal";
@@ -11,7 +11,7 @@ import { TrayectoPanel } from "./_components/trayecto-panel";
 import { useDashboardData } from "./hooks/use-dashboard-data";
 import { useDeviceLocation } from "./hooks/use-device-location";
 import { fetchSighting } from "./lib/api";
-import type { DashboardInitialData, DashboardSighting } from "./types";
+import type { DashboardInitialData, DashboardSighting, LatLng, NavigationMapState } from "./types";
 
 export type { DashboardInitialData, DashboardRoute, DashboardSighting, DashboardSpecies } from "./types";
 
@@ -24,8 +24,28 @@ type DashboardClientProps = {
 export default function DashboardClient({ userName, initialData }: DashboardClientProps) {
   const dashboard = useDashboardData(initialData);
   const device = useDeviceLocation();
+  const [navigation, setNavigation] = useState<NavigationMapState>({
+    origin: null,
+    destination: null,
+    route: null,
+    selectionMode: null,
+    currentLocation: null,
+    followUser: false,
+  });
   const [reportOpen, setReportOpen] = useState(false);
   const [detail, setDetail] = useState<{ sighting: DashboardSighting | null; loading: boolean } | null>(null);
+
+  const selectNavigationPoint = useCallback((point: LatLng) => {
+    setNavigation((current) => {
+      if (current.selectionMode === "origin") {
+        return { ...current, origin: point, route: null, selectionMode: null, followUser: false };
+      }
+      if (current.selectionMode === "destination") {
+        return { ...current, destination: point, route: null, selectionMode: null, followUser: false };
+      }
+      return current;
+    });
+  }, []);
 
   async function showDetails(id: string) {
     setDetail({ sighting: null, loading: true });
@@ -44,16 +64,18 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
 
       <main className="grid gap-8 pt-10">
         <DashboardIntro onReport={() => setReportOpen(true)} />
-        <TrayectoPanel />
+        <TrayectoPanel navigation={navigation} onNavigationChange={setNavigation} />
         <StatsGrid loading={dashboard.loading} stats={dashboard.stats} />
         <SightingsPanel
           data={dashboard.data}
           device={device}
+          navigation={navigation}
           error={dashboard.error}
           filters={dashboard.filters}
           loading={dashboard.loading}
           onFiltersChange={dashboard.updateFilters}
           onShowDetails={(id) => void showDetails(id)}
+          onMapPointSelect={selectNavigationPoint}
         />
       </main>
 

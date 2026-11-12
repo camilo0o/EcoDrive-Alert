@@ -4,9 +4,11 @@ import { useAlertas } from "@/app/dashboard/hooks/use-alertas";
 
 type Props = {
   trayectoId?: string;
+  gpsError?: string;
+  gpsReady?: boolean;
 };
 
-export function AlertasPanel({ trayectoId }: Props) {
+export function AlertasPanel({ trayectoId, gpsError = "", gpsReady = false }: Props) {
   const { alertas, error, loading, marcarComoVista } = useAlertas(trayectoId);
 
   if (!trayectoId) return null;
@@ -19,9 +21,15 @@ export function AlertasPanel({ trayectoId }: Props) {
 
       {error && <p className="mb-3 text-sm text-danger" role="alert">{error}</p>}
       {loading && alertas.length === 0 ? (
-        <p className="text-sm text-amber-900">Buscando alertas cercanas...</p>
+        <p className="text-sm text-amber-900">Buscando alertas cercanas…</p>
       ) : alertas.length === 0 ? (
-        <p className="text-sm text-amber-900">Seguimiento GPS activo. No hay alertas cercanas.</p>
+        gpsError ? (
+          <p className="text-sm text-amber-900">Las alertas requieren ubicación GPS. Corrige el permiso o la señal para continuar.</p>
+        ) : gpsReady ? (
+          <p className="text-sm text-amber-900">GPS activo. No hay avistamientos a menos de 500 m.</p>
+        ) : (
+          <p className="text-sm text-amber-900">Esperando la primera ubicación GPS para revisar avistamientos…</p>
+        )
       ) : (
         <ul className="space-y-3">
           {alertas.map((alerta) => (

@@ -1,5 +1,20 @@
 export type LatLng = [latitude: number, longitude: number];
 
+export type NavigationRoute = {
+  coordinates: LatLng[];
+  distanceMeters: number;
+  durationSeconds: number;
+};
+
+export type NavigationMapState = {
+  origin: LatLng | null;
+  destination: LatLng | null;
+  route: NavigationRoute | null;
+  selectionMode: "origin" | "destination" | null;
+  currentLocation: LatLng | null;
+  followUser: boolean;
+};
+
 export type DashboardRoute = {
   id: string;
   nombre: string;

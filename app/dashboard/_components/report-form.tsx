@@ -36,34 +36,42 @@ export function ReportForm({
   const [selectedKm, setSelectedKm] = useState("");
   const [locationMode, setLocationMode] = useState<"gps" | "route-km">("gps");
   const [query, setQuery] = useState("");
-  const [taxa, setTaxa] = useState<TaxonSuggestion[]>([]);
+  const [taxaState, setTaxaState] = useState<{ query: string; items: TaxonSuggestion[] }>({ query: "", items: [] });
   const [selectedTaxon, setSelectedTaxon] = useState<TaxonSuggestion | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState("");
+  const [searchState, setSearchState] = useState<{ query: string; loading: boolean; error: string }>({
+    query: "",
+    loading: false,
+    error: "",
+  });
+  const trimmedQuery = query.trim();
+  const canSearchTaxa = trimmedQuery.length >= 2 && !selectedTaxon;
+  const taxa = canSearchTaxa && taxaState.query === trimmedQuery ? taxaState.items : [];
+  const searching = canSearchTaxa && searchState.query === trimmedQuery && searchState.loading;
+  const searchError = canSearchTaxa && searchState.query === trimmedQuery ? searchState.error : "";
 
   useEffect(() => {
-    const trimmed = query.trim();
-    if (trimmed.length < 2 || selectedTaxon) {
-      setTaxa([]);
-      setSearching(false);
-      setSearchError("");
-      return;
-    }
+    if (!canSearchTaxa) return;
 
     const controller = new AbortController();
-    setSearching(true);
     const timeout = window.setTimeout(() => {
-      setSearchError("");
-      void searchTaxa(trimmed, controller.signal)
-        .then(setTaxa)
+      setSearchState({ query: trimmedQuery, loading: true, error: "" });
+      setTaxaState({ query: trimmedQuery, items: [] });
+      void searchTaxa(trimmedQuery, controller.signal)
+        .then((items) => setTaxaState({ query: trimmedQuery, items }))
         .catch((searchFailure: unknown) => {
           if (!controller.signal.aborted) {
-            setTaxa([]);
-            setSearchError(searchFailure instanceof Error ? searchFailure.message : "No se pudo buscar en iNaturalist.");
+            setTaxaState({ query: trimmedQuery, items: [] });
+            setSearchState({
+              query: trimmedQuery,
+              loading: false,
+              error: searchFailure instanceof Error ? searchFailure.message : "No se pudo buscar en iNaturalist.",
+            });
           }
         })
         .finally(() => {
-          if (!controller.signal.aborted) setSearching(false);
+          if (!controller.signal.aborted) {
+            setSearchState((current) => current.query === trimmedQuery ? { ...current, loading: false } : current);
+          }
         });
     }, 350);
 
@@ -71,7 +79,7 @@ export function ReportForm({
       window.clearTimeout(timeout);
       controller.abort();
     };
-  }, [query, selectedTaxon]);
+  }, [canSearchTaxa, trimmedQuery]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,7 +128,6 @@ export function ReportForm({
                 onClick={() => {
                   setSelectedTaxon(taxon);
                   setQuery(taxon.nombreComun ?? taxon.nombreCientifico);
-                  setTaxa([]);
                 }}
                 type="button"
               >

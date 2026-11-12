@@ -20,7 +20,7 @@ export type AlertaPublica = {
   avistamientoId: string;
 };
 
-const RADIO_ALERTA_METROS = 200;
+const RADIO_ALERTA_METROS = 500;
 
 function toRadians(value: number) {
   return (value * Math.PI) / 180;

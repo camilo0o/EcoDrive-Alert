@@ -197,19 +197,28 @@ describe("gestión del trayecto activo", () => {
     const userId = String(user._id);
     const input = {
       origen: { lat: -34.9, lng: -56.1 },
+      destino: { lat: -34.9, lng: -54.9 },
       destinoNombre: "Punta del Este",
+      distanciaKm: 120,
+      duracionEstimadaMin: 180,
     };
 
     const started = await iniciarTrayecto(input, userId);
     expect(started).toMatchObject({
-      origenNombre: "Ubicación actual",
+      origenNombre: "Punto A",
       destinoNombre: "Punta del Este",
+      origen: input.origen,
+      destino: input.destino,
+      distanciaKm: 120,
+      duracionEstimadaMin: 180,
       estado: EstadoTrayecto.EN_CURSO,
     });
-    expect(started).not.toHaveProperty("distanciaKm");
-    expect(started).not.toHaveProperty("duracionEstimadaMin");
-    expect(await TrayectoModel.findById(started.id).lean()).not.toHaveProperty("destinoLatitud");
-    expect(await TrayectoModel.findById(started.id).lean()).not.toHaveProperty("destinoLongitud");
+    expect(await TrayectoModel.findById(started.id).lean()).toMatchObject({
+      destinoLatitud: input.destino.lat,
+      destinoLongitud: input.destino.lng,
+      distanciaKm: 120,
+      duracionEstimadaMin: 180,
+    });
     await expect(obtenerTrayectoEnCurso(userId)).resolves.toEqual(started);
     await expect(iniciarTrayecto(input, userId)).rejects.toBeInstanceOf(TrayectoEnCursoExistenteError);
 
