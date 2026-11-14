@@ -1,16 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { FormMessage } from "@/components/ui/form-message";
-import type { DeviceLocation } from "../hooks/use-device-location";
 import type {
   DashboardInitialData,
   DashboardView,
-  LatLng,
-  NavigationMapState,
   SightingFilters as Filters,
 } from "../types";
-import { MapPanel } from "./map-panel";
 import { SightingFilters } from "./sighting-filters";
 import { SightingList } from "./sighting-list";
 import { ViewToggle } from "./view-toggle";
@@ -20,59 +15,52 @@ type SightingsPanelProps = {
   filters: Filters;
   loading: boolean;
   error: string;
-  /** Ubicación temporal del dispositivo, visible solo en el mapa de esta sesión. */
-  device: DeviceLocation;
-  navigation: NavigationMapState;
+  view: DashboardView;
+  onViewChange: (view: DashboardView) => void;
   onFiltersChange: (patch: Partial<Filters>) => void;
   onShowDetails: (id: string) => void;
-  onMapPointSelect: (point: LatLng) => void;
 };
 
-export function SightingsPanel(props: SightingsPanelProps) {
-  const { data, filters, loading, error, device, navigation, onFiltersChange, onShowDetails, onMapPointSelect } = props;
-  const [view, setView] = useState<DashboardView>("map");
-
+export function SightingsPanel({
+  data,
+  filters,
+  loading,
+  error,
+  view,
+  onViewChange,
+  onFiltersChange,
+  onShowDetails,
+}: SightingsPanelProps) {
   return (
-    <section className="rounded-2xl border border-line bg-white p-5 shadow-[0_10px_35px_rgba(29,66,54,.035)] sm:p-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-bold tracking-tight text-brand-strong">Avistamientos cerca de las rutas</h2>
-        <ViewToggle onChange={setView} value={view} />
-      </div>
+    <div className="pointer-events-auto absolute right-2 top-[4.75rem] z-[1100] flex w-fit flex-col items-end gap-2 sm:right-4 sm:top-24">
+      <ViewToggle onChange={onViewChange} value={view} />
 
-      <div className="mt-6">
-        <SightingFilters
-          filters={filters}
-          loading={loading}
-          onChange={onFiltersChange}
-          routes={data.rutas}
-          species={data.especies}
-          total={data.total}
-        />
-      </div>
-
-      {error && <FormMessage className="mt-4">{error}</FormMessage>}
-
-      <div className={view === "map" ? "mt-6 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,1fr)]" : "mt-6"}>
-        {view === "map" && (
-          <MapPanel
-            locating={device.loading}
-            locationError={device.error}
-            onLocate={() => void device.locate()}
-            navigation={navigation}
-            onMapPointSelect={onMapPointSelect}
+      {view === "reports" && (
+        <section
+          aria-label="Avistamientos cerca de las rutas"
+          className="flex max-h-[calc(100dvh-11rem)] w-[min(27rem,calc(100vw-1rem))] flex-col overflow-hidden rounded-2xl border border-white/80 bg-white/95 p-3 shadow-xl backdrop-blur-md sm:p-4"
+        >
+          <h2 className="mb-3 text-lg font-bold text-brand-strong">Avistamientos cerca de las rutas</h2>
+          <SightingFilters
+            filters={filters}
+            loading={loading}
+            onChange={onFiltersChange}
             routes={data.rutas}
-            sightings={data.avistamientos}
-            userLocation={device.location}
+            species={data.especies}
+            total={data.total}
           />
-        )}
-        <SightingList
-          layout={view === "map" ? "column" : "grid"}
-          loading={loading}
-          onShowDetails={onShowDetails}
-          routes={data.rutas}
-          sightings={data.avistamientos}
-        />
-      </div>
-    </section>
+          {error && <FormMessage className="mt-3">{error}</FormMessage>}
+          <div className="mt-3 min-h-0 flex-1 overflow-y-auto">
+            <SightingList
+              layout="column"
+              loading={loading}
+              onShowDetails={onShowDetails}
+              routes={data.rutas}
+              sightings={data.avistamientos}
+            />
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

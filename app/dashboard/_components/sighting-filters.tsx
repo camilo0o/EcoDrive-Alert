@@ -13,14 +13,14 @@ type SightingFiltersProps = {
 
 export function SightingFilters({ filters, routes, species, total, loading, onChange }: SightingFiltersProps) {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
-      <Field className="sm:w-56" label="Filtrar por ruta">
+    <div className="grid gap-3">
+      <Field label="Filtrar por ruta">
         <Select onChange={(event) => onChange({ routeId: event.target.value })} value={filters.routeId}>
           <option value="">Todas las rutas</option>
           {routes.map((route) => <option key={route.id} value={route.id}>{route.nombre}</option>)}
         </Select>
       </Field>
-      <Field className="sm:w-56" label="Filtrar por especie">
+      <Field label="Filtrar por especie">
         <Select onChange={(event) => onChange({ speciesId: event.target.value })} value={filters.speciesId}>
           <option value="">Todas las especies</option>
           {species.map((item) => (
@@ -30,7 +30,7 @@ export function SightingFilters({ filters, routes, species, total, loading, onCh
           ))}
         </Select>
       </Field>
-      <span aria-live="polite" className="text-sm text-subtle sm:mb-3 sm:ml-auto">
+      <span aria-live="polite" className="text-sm text-subtle">
         {loading ? "Actualizando…" : pluralizeReports(total)}
       </span>
     </div>

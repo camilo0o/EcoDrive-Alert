@@ -11,14 +11,14 @@ type Stat = {
 function StatCard({ stat, loading }: { stat: Stat; loading: boolean }) {
   const Icon = stat.icon;
   return (
-    <article className="flex items-start gap-4 rounded-2xl border border-line bg-white p-5">
-      <span aria-hidden="true" className={`grid size-10 shrink-0 place-items-center rounded-xl ${stat.iconStyle}`}>
-        <Icon size={20} />
+    <article className="flex min-w-0 items-center gap-2 rounded-xl border border-white/80 bg-white/90 px-2 py-2 shadow-lg backdrop-blur-md sm:gap-2.5 sm:px-3">
+      <span aria-hidden="true" className={`grid size-7 shrink-0 place-items-center rounded-lg ${stat.iconStyle}`}>
+        <Icon size={15} />
       </span>
-      <div>
-        <p className="text-sm font-medium text-muted">{stat.label}</p>
-        <p className="mt-1 text-3xl font-bold tracking-tight text-brand-strong">{loading ? "—" : stat.value}</p>
-        <p className="mt-1 text-sm text-subtle">{stat.note}</p>
+      <div className="min-w-0">
+        <p className="truncate text-[10px] font-medium leading-tight text-muted sm:text-xs">{stat.label}</p>
+        <p className="text-base font-bold leading-tight tracking-tight text-brand-strong sm:text-lg">{loading ? "—" : stat.value}</p>
+        <p className="sr-only">{stat.note}</p>
       </div>
     </article>
   );
@@ -37,7 +37,7 @@ export function StatsGrid({ stats, loading }: StatsGridProps) {
   ];
 
   return (
-    <section aria-label="Resumen de avistamientos" className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+    <section aria-label="Resumen de avistamientos" className="grid grid-cols-3 gap-1.5 sm:gap-2">
       {items.map((stat) => <StatCard key={stat.label} loading={loading} stat={stat} />)}
     </section>
   );

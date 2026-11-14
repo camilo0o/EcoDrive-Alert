@@ -81,7 +81,7 @@ export type DashboardInitialData = {
 
 export type SightingFilters = { routeId: string; speciesId: string };
 
-export type DashboardView = "map" | "reports";
+export type DashboardView = "map" | "route" | "reports";
 
 /** Especie que el servidor reconoció en lo que dijo el conductor. */
 export type VoiceSpecies = {

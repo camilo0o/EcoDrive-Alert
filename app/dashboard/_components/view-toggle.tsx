@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils/cn";
 import type { DashboardView } from "../types";
 
 const options: { value: DashboardView; label: string }[] = [
-  { value: "map", label: "Mapa" },
+  { value: "route", label: "Recorrido" },
   { value: "reports", label: "Reportes" },
 ];
 
@@ -14,7 +14,7 @@ type ViewToggleProps = {
 
 export function ViewToggle({ value, onChange }: ViewToggleProps) {
   return (
-    <div aria-label="Vista de avistamientos" className="inline-flex gap-1 rounded-xl bg-surface-alt p-1" role="group">
+    <div aria-label="Paneles del mapa" className="inline-flex gap-1 rounded-xl bg-surface-alt p-1" role="group">
       {options.map((option) => {
         const active = option.value === value;
         return (
@@ -26,7 +26,7 @@ export function ViewToggle({ value, onChange }: ViewToggleProps) {
               focusRing,
             )}
             key={option.value}
-            onClick={() => onChange(option.value)}
+            onClick={() => onChange(active ? "map" : option.value)}
             type="button"
           >
             {option.label}

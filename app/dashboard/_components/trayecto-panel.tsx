@@ -239,7 +239,7 @@ export function TrayectoPanel({
   const selectingMessage = "Toca el mapa para colocar el destino.";
 
   return (
-    <section aria-labelledby="trayecto-heading" className="rounded-2xl border border-brand/15 bg-white p-5 shadow-sm sm:p-6">
+    <section aria-labelledby="trayecto-heading" className="rounded-2xl border border-brand/15 bg-white p-4 shadow-xl sm:p-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-brand-accent">Navegación GPS</p>
@@ -300,11 +300,11 @@ export function TrayectoPanel({
           )}
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <label className="grid flex-1 gap-1 text-sm font-medium text-brand-strong">
+            <label className="grid min-w-0 flex-1 gap-1 text-sm font-medium text-brand-strong">
               Buscar destino por nombre o dirección
               <input
                 autoComplete="off"
-                className="rounded-lg border border-line-strong px-3 py-2"
+                className="w-full min-w-0 rounded-lg border border-line-strong px-3 py-2"
                 disabled={calculating}
                 maxLength={100}
                 onChange={(event) => {

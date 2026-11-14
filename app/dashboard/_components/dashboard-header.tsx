@@ -7,14 +7,14 @@ export function DashboardHeader({ userName, onLoggedOut }: DashboardHeaderProps)
   const initial = userName.trim().charAt(0).toUpperCase() || "?";
 
   return (
-    <header className="flex h-20 items-center justify-between gap-4 border-b border-brand/10">
+    <header className="flex h-14 items-center justify-between gap-3 rounded-2xl border border-white/80 bg-white/90 px-3 shadow-lg backdrop-blur-md sm:h-16 sm:px-5">
       {/* Logueado, el logo lleva al panel y no a la portada pública. */}
       <Logo compactOnMobile href="/dashboard" />
       <div className="flex items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-2.5">
           <span
             aria-hidden="true"
-            className="grid size-9 place-items-center rounded-full bg-brand-tint text-base font-semibold text-brand"
+            className="hidden size-9 place-items-center rounded-full bg-brand-tint text-base font-semibold text-brand sm:grid"
           >
             {initial}
           </span>

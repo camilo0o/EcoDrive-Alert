@@ -114,15 +114,36 @@ function mockDashboardFetch() {
   return fetchMock;
 }
 
+function showReports() {
+  fireEvent.click(screen.getByRole("button", { name: "Reportes" }));
+}
+
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
 describe("panel de avistamientos", () => {
+  it("abre y cierra los paneles de recorrido y reportes", () => {
+    mockDashboardFetch();
+    render(<DashboardClient initialData={initialData} userName="Ana" />);
+
+    expect(screen.queryByRole("heading", { name: "Planifica un recorrido" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Recorrido" }));
+    expect(screen.getByRole("heading", { name: "Planifica un recorrido" })).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Recorrido" }));
+    expect(screen.queryByRole("heading", { name: "Planifica un recorrido" })).not.toBeInTheDocument();
+
+    showReports();
+    expect(screen.getByRole("heading", { name: "Avistamientos cerca de las rutas" })).toBeVisible();
+    showReports();
+    expect(screen.queryByRole("heading", { name: "Avistamientos cerca de las rutas" })).not.toBeInTheDocument();
+  });
+
   it("muestra la actividad y obtiene el detalle del reporte seleccionado", async () => {
     const fetchMock = mockDashboardFetch();
     render(<DashboardClient initialData={initialData} userName="Ana" />);
+    showReports();
 
     expect(screen.getByRole("heading", { name: "Carpincho" })).toBeVisible();
     expect(screen.getByText("Cruce cerca del arroyo")).toBeVisible();
@@ -139,6 +160,7 @@ describe("panel de avistamientos", () => {
   it("consulta los avistamientos al cambiar el filtro de ruta", async () => {
     const fetchMock = mockDashboardFetch();
     render(<DashboardClient initialData={initialData} userName="Ana" />);
+    showReports();
 
     fireEvent.change(screen.getByRole("combobox", { name: "Filtrar por ruta" }), {
       target: { value: route.id },
@@ -152,6 +174,7 @@ describe("panel de avistamientos", () => {
   it("envía un reporte por ruta y km sin pedir ubicación GPS", async () => {
     const fetchMock = mockDashboardFetch();
     render(<DashboardClient initialData={initialData} userName="Ana" />);
+    showReports();
     expect(screen.getByRole("heading", { name: "Carpincho" })).toBeVisible();
 
     fireEvent.click(screen.getByRole("button", { name: /Reportar avistamiento/ }));

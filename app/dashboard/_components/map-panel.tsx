@@ -22,14 +22,27 @@ type MapPanelProps = {
   onLocate: () => void;
   navigation: NavigationMapState;
   onMapPointSelect: (point: LatLng) => void;
+  fullScreen?: boolean;
 };
 
-export function MapPanel({ sightings, routes, userLocation, locating, locationError, onLocate, navigation, onMapPointSelect }: MapPanelProps) {
+export function MapPanel({
+  sightings,
+  routes,
+  userLocation,
+  locating,
+  locationError,
+  onLocate,
+  navigation,
+  onMapPointSelect,
+  fullScreen = false,
+}: MapPanelProps) {
   return (
-    <div className="relative min-h-[28rem] overflow-hidden rounded-xl bg-surface">
+    <div className={fullScreen
+      ? "fixed inset-0 z-0 h-dvh w-screen overflow-hidden bg-surface"
+      : "relative min-h-[28rem] overflow-hidden rounded-xl bg-surface"}>
       <LeafletMap navigation={navigation} onMapPointSelect={onMapPointSelect} routes={routes} sightings={sightings} userLocation={navigation.currentLocation ?? userLocation} />
       <Button
-        className="absolute right-3 top-3 z-[1000] shadow-md"
+        className={`absolute z-[1000] shadow-md ${fullScreen ? "bottom-20 right-3 sm:bottom-4 sm:right-4" : "right-3 top-3"}`}
         disabled={locating}
         onClick={onLocate}
         size="sm"
@@ -39,17 +52,17 @@ export function MapPanel({ sightings, routes, userLocation, locating, locationEr
         {locating ? "Buscando…" : "Mi ubicación"}
       </Button>
       {locationError && (
-        <p className="absolute inset-x-3 bottom-3 z-[1000] rounded-lg bg-white/95 px-3 py-2 text-sm text-danger shadow" role="alert">
+        <p className={`absolute inset-x-3 z-[1000] rounded-lg bg-white/95 px-3 py-2 text-sm text-danger shadow ${fullScreen ? "bottom-16 sm:bottom-3" : "bottom-3"}`} role="alert">
           {locationError}
         </p>
       )}
       {userLocation && (
-        <p className="absolute bottom-3 left-3 z-[1000] rounded-lg bg-white/95 px-3 py-2 text-xs text-muted shadow">
+        <p className={`absolute left-3 z-[1000] rounded-lg bg-white/95 px-3 py-2 text-xs text-muted shadow ${fullScreen ? "bottom-16 sm:bottom-3" : "bottom-3"}`}>
           Tu ubicación solo es visible para ti y se elimina en 2 minutos.
         </p>
       )}
       {navigation.route && (
-        <p className="absolute bottom-3 left-3 z-[1000] rounded-lg bg-white/95 px-3 py-2 text-xs font-medium text-brand-strong shadow">
+        <p className={`absolute left-3 z-[1000] rounded-lg bg-white/95 px-3 py-2 text-xs font-medium text-brand-strong shadow ${fullScreen ? "bottom-28 sm:bottom-14" : "bottom-3"}`}>
           Ruta A → B · {navigation.followUser ? "GPS en vivo" : "vista previa"}
         </p>
       )}

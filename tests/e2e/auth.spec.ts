@@ -133,6 +133,29 @@ test("permite crear cuenta, iniciar sesión y cerrar sesión", async ({ page }) 
     await expect(otherAccountMap.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 });
 
+test("los paneles de recorrido y reportes se pliegan sin superponerse", async ({ page }) => {
+    await page.setViewportSize({ width: 1357, height: 588 });
+    await login(page, reportUserEmail, reportUserPassword);
+
+    await page.getByRole("button", { name: "Recorrido", exact: true }).click();
+    const routePanel = page.getByRole("region", { name: "Planifica un recorrido" });
+    await expect(routePanel).toBeVisible();
+    const introBox = await page.getByRole("heading", { name: "Conduce con más información." })
+        .locator("xpath=../..")
+        .boundingBox();
+    const routeBox = await routePanel.boundingBox();
+    if (!introBox || !routeBox) throw new Error("No se pudieron medir los paneles del mapa.");
+    expect(routeBox.y).toBeGreaterThanOrEqual(introBox.y + introBox.height);
+
+    await page.getByRole("button", { name: "Recorrido", exact: true }).click();
+    await expect(routePanel).toBeHidden();
+    await page.getByRole("button", { name: "Reportes" }).click();
+    const reportsPanel = page.getByRole("region", { name: "Avistamientos cerca de las rutas" });
+    await expect(reportsPanel).toBeVisible();
+    await page.getByRole("button", { name: "Reportes" }).click();
+    await expect(reportsPanel).toHaveCount(0);
+});
+
 test("permite reportar, filtrar y consultar el detalle de un avistamiento", async ({ page }) => {
     test.setTimeout(60_000);
     const leafletErrors: string[] = [];
@@ -226,6 +249,7 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
     await expect(page.getByRole("dialog").getByRole("status"))
         .toContainText("El avistamiento quedó registrado");
     await page.getByRole("button", { name: "Volver al mapa" }).click();
+    await page.getByRole("button", { name: "Reportes" }).click();
     const reportCard = page.getByRole("article").filter({ hasText: reportDescription });
     await expect(reportCard).toBeVisible();
 
@@ -243,7 +267,6 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
     ).toBeVisible();
     await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Reportes" }).click();
     const detailResponsePromise = page.waitForResponse(
         (response) =>
             response.url().includes("/api/avistamientos/") &&
