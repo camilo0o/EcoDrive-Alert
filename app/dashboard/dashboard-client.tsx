@@ -40,9 +40,6 @@ export default function DashboardClient({ userName, initialData }: DashboardClie
 
   const selectNavigationPoint = useCallback((point: LatLng) => {
     setNavigation((current) => {
-      if (current.selectionMode === "origin") {
-        return { ...current, origin: point, route: null, selectionMode: null, followUser: false };
-      }
       if (current.selectionMode === "destination") {
         return { ...current, destination: point, route: null, selectionMode: null, followUser: false };
       }

@@ -82,7 +82,7 @@ describe("alertas de fauna durante el trayecto", () => {
     await AvistamientoModel.create({
       usuarioId: user._id,
       especieId: especie._id,
-      ubicacion: { type: "Point", coordinates: [-56.102, -34.901] },
+      ubicacion: { type: "Point", coordinates: [-56.102, -34.91] },
       fechaHora: new Date(),
       metodo: MetodoReporte.MANUAL,
       esAnonimo: false,
@@ -93,14 +93,14 @@ describe("alertas de fauna durante el trayecto", () => {
       String(trayecto._id),
       String(user._id),
       { lat: -34.9005, lng: -56.1012 },
-      200,
+      2000,
     );
 
     expect(result.creadas).toBe(1);
     expect(result.alertas[0]).toMatchObject({
       visto: false,
       trayectoId: String(trayecto._id),
-      mensaje: expect.stringContaining("Carpincho"),
+      mensaje: "Precaución: avistamiento de fauna en los próximos 2 km",
     });
     expect(await AlertaModel.countDocuments()).toBe(1);
 
@@ -115,7 +115,7 @@ describe("alertas de fauna durante el trayecto", () => {
       String(trayecto._id),
       String(user._id),
       { lat: -34.9005, lng: -56.1012 },
-      200,
+      2000,
     );
     expect(posterior.creadas).toBe(0);
   });

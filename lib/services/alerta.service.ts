@@ -20,7 +20,7 @@ export type AlertaPublica = {
   avistamientoId: string;
 };
 
-const RADIO_ALERTA_METROS = 500;
+const RADIO_ALERTA_METROS = 2000;
 
 function toRadians(value: number) {
   return (value * Math.PI) / 180;
@@ -129,7 +129,6 @@ export async function revisarAlertasParaUbicacion(
       },
     },
   })
-    .populate("especieId", "nombre nombreComun")
     .lean<Record<string, unknown>[]>();
 
   const creadas: AlertaPublica[] = [];
@@ -143,9 +142,6 @@ export async function revisarAlertasParaUbicacion(
 
     if (existe) continue;
 
-    const species = (avistamiento.especieId as Record<string, unknown> | null) ?? null;
-    const nombre = (species?.nombreComun as string | undefined) ?? (species?.nombre as string | undefined) ?? "fauna silvestre";
-
     const coords = (avistamiento.ubicacion as Record<string, unknown>)?.coordinates as [number, number] | undefined;
     const distanciaKm = coords && coords.length >= 2
       ? haversineKm(ubicacion.lat, ubicacion.lng, Number(coords[1]), Number(coords[0]))
@@ -154,7 +150,7 @@ export async function revisarAlertasParaUbicacion(
     if (distanciaKm === Number.POSITIVE_INFINITY || distanciaKm > radioMetros / 1000) continue;
 
     const alerta = await AlertaModel.create({
-      mensaje: `Atención: hay un ${nombre} cerca de tu ruta. Distancia aproximada: ${distanciaKm.toFixed(1)} km.`,
+      mensaje: "Precaución: avistamiento de fauna en los próximos 2 km",
       fechaHora: new Date(),
       distanciaKm: Number(distanciaKm.toFixed(2)),
       visto: false,

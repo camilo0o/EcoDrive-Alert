@@ -26,7 +26,7 @@ export function AlertasPanel({ trayectoId, gpsError = "", gpsReady = false }: Pr
         gpsError ? (
           <p className="text-sm text-amber-900">Las alertas requieren ubicación GPS. Corrige el permiso o la señal para continuar.</p>
         ) : gpsReady ? (
-          <p className="text-sm text-amber-900">GPS activo. No hay avistamientos a menos de 500 m.</p>
+          <p className="text-sm text-amber-900">GPS activo. No hay avistamientos reportados en los próximos 2 km.</p>
         ) : (
           <p className="text-sm text-amber-900">Esperando la primera ubicación GPS para revisar avistamientos…</p>
         )

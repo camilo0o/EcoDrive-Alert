@@ -12,7 +12,7 @@ Aplicación para consultar y reportar avistamientos de fauna silvestre en las ru
 - Mapa para visualizar la ubicación de los reportes.
 - Inicio de trayecto con GPS y alertas de fauna por proximidad mientras el trayecto permanece activo.
 
-La detección automática de fauna y la planificación de rutas no están conectadas a servicios en esta versión. Para iniciar alertas se ingresa el nombre del destino y se comparte el GPS actual mientras el trayecto permanece activo; no se requieren coordenadas del destino.
+La detección automática de fauna no está conectada a servicios en esta versión. Para planificar un recorrido se puede seleccionar el destino en el mapa o buscarlo por nombre/dirección; el origen se obtiene del GPS actual. La búsqueda de lugares usa OpenStreetMap. Durante el trayecto, se generan alertas por avistamientos comunitarios activos ubicados a menos de 2 km de la posición GPS.
 
 ## Requisitos
 

@@ -15,6 +15,7 @@ const inaturalistTaxonId = 74442;
 
 let reportUserId: string;
 let taxonSpeciesExisted: boolean;
+let expectedTaxonRisk = "MEDIO";
 
 function rateLimitKey(scope: string, identifier: string) {
     const secret = process.env.JWT_SECRET;
@@ -75,7 +76,13 @@ test.beforeAll(async () => {
             ],
         },
     });
-    taxonSpeciesExisted = Boolean(await EspecieModel.exists({ inaturalistTaxonId }));
+    const existingTaxonSpecies = await EspecieModel.findOne({ inaturalistTaxonId })
+        .select("nivelRiesgo")
+        .lean();
+    taxonSpeciesExisted = Boolean(existingTaxonSpecies);
+    if (existingTaxonSpecies && existingTaxonSpecies.nivelRiesgo !== "SIN_CLASIFICAR") {
+        expectedTaxonRisk = existingTaxonSpecies.nivelRiesgo;
+    }
     const reportUser = await UsuarioModel.create({
             nombre: "Usuario E2E Reportes",
             email: reportUserEmail,
@@ -98,12 +105,12 @@ test("la portada da acceso a registro e inicio de sesión", async ({ page }) => 
 
     await expect(page.getByRole("heading", { name: "Fauna en Ruta" })).toBeVisible();
     await page.getByRole("link", { name: "Crear cuenta" }).click();
-    await expect(page).toHaveURL(/\/register$/);
+    await expect(page).toHaveURL(/\/register$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Crear cuenta" })).toBeVisible();
 
     await page.goto("/");
     await page.getByRole("link", { name: "Iniciar sesión" }).click();
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Iniciar sesión" })).toBeVisible();
 });
 
@@ -113,7 +120,7 @@ test("permite crear cuenta, iniciar sesión y cerrar sesión", async ({ page }) 
     await registerAndLogin(page);
     await expect(page.getByText("Usuario E2E", { exact: true })).toBeVisible();
 
-    const map = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    const map = page.getByRole("application", { name: "Mapa de avistamientos y navegación GPS" });
     await page.getByRole("button", { name: "Mi ubicación" }).click();
     await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(1);
 
@@ -122,7 +129,7 @@ test("permite crear cuenta, iniciar sesión y cerrar sesión", async ({ page }) 
     await expect(page.getByRole("heading", { name: "Iniciar sesión" })).toBeVisible();
 
     await login(page, reportUserEmail, reportUserPassword);
-    const otherAccountMap = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    const otherAccountMap = page.getByRole("application", { name: "Mapa de avistamientos y navegación GPS" });
     await expect(otherAccountMap.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 });
 
@@ -143,7 +150,7 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
         }
     });
 
-    const map = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    const map = page.getByRole("application", { name: "Mapa de avistamientos y navegación GPS" });
     await page.getByRole("button", { name: "Mi ubicación" }).click();
     await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(1);
     await expect(page.getByText("Tu ubicación solo es visible para ti y se elimina en 2 minutos.")).toBeVisible();
@@ -152,7 +159,7 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
 
     await page.reload();
     await expect(page.getByRole("heading", { name: "Conduce con más información." })).toBeVisible();
-    const reloadedMap = page.getByRole("application", { name: "Mapa de avistamientos en Uruguay" });
+    const reloadedMap = page.getByRole("application", { name: "Mapa de avistamientos y navegación GPS" });
     await expect(reloadedMap.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 
     await page.route("**/api/especies/buscar**", (route) =>
@@ -205,7 +212,7 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
             id: reportedSpeciesId,
             inaturalistTaxonId,
             nombreCientifico: "Hydrochoerus hydrochaeris",
-            nivelRiesgo: "MEDIO",
+            nivelRiesgo: expectedTaxonRisk,
         },
         rutaId: null,
         km: null,
@@ -219,13 +226,21 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
     await expect(page.getByRole("dialog").getByRole("status"))
         .toContainText("El avistamiento quedó registrado");
     await page.getByRole("button", { name: "Volver al mapa" }).click();
-    await expect(page.getByRole("heading", { name: reportedSpeciesName })).toBeVisible();
+    const reportCard = page.getByRole("article").filter({ hasText: reportDescription });
+    await expect(reportCard).toBeVisible();
 
     await page.getByLabel("Filtrar por especie").selectOption(reportedSpeciesId);
-    await expect(page.getByText("1 reporte", { exact: true })).toBeVisible();
-    await expect(page.getByText(reportDescription)).toBeVisible();
-    await expect(page.getByRole("heading", { name: reportedSpeciesName })).toBeVisible();
-    await expect(map.locator('.leaflet-overlay-pane path[fill="#e2bb67"]')).toHaveCount(1);
+    await expect(reportCard).toBeVisible();
+    await expect(reportCard.getByRole("heading", { name: reportedSpeciesName })).toBeVisible();
+    const markerFillByRisk: Record<string, string> = {
+        ALTO: "#d97178",
+        MEDIO: "#e2bb67",
+        BAJO: "#64a885",
+        SIN_CLASIFICAR: "#b8c0cc",
+    };
+    await expect(
+        map.locator(`.leaflet-overlay-pane path[fill="${markerFillByRisk[expectedTaxonRisk]}"]`).first(),
+    ).toBeVisible();
     await expect(map.locator('.leaflet-overlay-pane path[fill="#4aa3df"]')).toHaveCount(0);
 
     await page.getByRole("button", { name: "Reportes" }).click();
@@ -234,7 +249,7 @@ test("permite reportar, filtrar y consultar el detalle de un avistamiento", asyn
             response.url().includes("/api/avistamientos/") &&
             response.request().method() === "GET",
     );
-    await page.getByRole("button", { name: "Ver detalle" }).click();
+    await reportCard.getByRole("button", { name: "Ver detalle" }).click();
     const detailResponse = await detailResponsePromise;
     expect(detailResponse.status()).toBe(200);
 

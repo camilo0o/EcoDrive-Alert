@@ -10,7 +10,7 @@ export type NavigationMapState = {
   origin: LatLng | null;
   destination: LatLng | null;
   route: NavigationRoute | null;
-  selectionMode: "origin" | "destination" | null;
+  selectionMode: "destination" | null;
   currentLocation: LatLng | null;
   followUser: boolean;
 };

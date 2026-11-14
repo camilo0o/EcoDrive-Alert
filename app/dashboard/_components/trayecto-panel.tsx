@@ -127,35 +127,24 @@ export function TrayectoPanel({
     }));
   }, [gps.location, onNavigationChange, trayecto]);
 
-  function elegirPunto(modo: "origin" | "destination") {
+  function elegirDestino() {
     setError("");
-    onNavigationChange((current) => ({ ...current, selectionMode: modo, route: null }));
-  }
-
-  async function usarGpsComoOrigen() {
-    setSaving(true);
-    setError("");
-    try {
-      const location = await getDeviceLocation();
-      onNavigationChange((current) => ({
-        ...current,
-        origin: location,
-        currentLocation: location,
-        selectionMode: null,
-        route: null,
-        followUser: false,
-      }));
-    } catch (locationError) {
-      setError(locationError instanceof Error ? locationError.message : "No se pudo obtener la ubicación GPS.");
-    } finally {
-      setSaving(false);
-    }
+    setDestinoNombre("");
+    onNavigationChange((current) => ({
+      ...current,
+      origin: null,
+      destination: null,
+      route: null,
+      selectionMode: "destination",
+      followUser: false,
+    }));
   }
 
   async function onCalculateRoute(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!navigation.origin || !navigation.destination) {
-      setError("Selecciona los puntos A y B en el mapa antes de calcular el recorrido.");
+    const query = destinoNombre.trim();
+    if (!navigation.destination && !query) {
+      setError("Selecciona el destino en el mapa o búscalo por nombre.");
       return;
     }
 
@@ -163,8 +152,40 @@ export function TrayectoPanel({
     setError("");
     onNavigationChange((current) => ({ ...current, route: null }));
     try {
-      const route = await calcularRecorrido(navigation.origin, navigation.destination);
-      onNavigationChange((current) => ({ ...current, route, selectionMode: null, followUser: false }));
+      const origin = await getDeviceLocation();
+      let destination = navigation.destination;
+      if (!destination) {
+        const response = await fetch("/api/trayectos/destino", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query }),
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(await leerError(response, "No se pudo encontrar el destino."));
+        const data = await response.json() as { destino?: { lat: number; lng: number; nombre: string } };
+        if (
+          !data.destino ||
+          !Number.isFinite(data.destino.lat) ||
+          !Number.isFinite(data.destino.lng) ||
+          typeof data.destino.nombre !== "string"
+        ) {
+          throw new Error("El servicio no devolvió un destino válido.");
+        }
+        destination = [data.destino.lat, data.destino.lng];
+        setDestinoNombre(data.destino.nombre);
+        onNavigationChange((current) => ({ ...current, destination, selectionMode: null }));
+      }
+
+      const route = await calcularRecorrido(origin, destination);
+      onNavigationChange((current) => ({
+        ...current,
+        origin,
+        currentLocation: origin,
+        destination,
+        route,
+        selectionMode: null,
+        followUser: false,
+      }));
     } catch (routeError) {
       setError(routeError instanceof Error ? routeError.message : "No se pudo calcular el recorrido.");
     } finally {
@@ -215,11 +236,7 @@ export function TrayectoPanel({
     }
   }
 
-  const selectingMessage = navigation.selectionMode === "origin"
-    ? "Toca el mapa para colocar el punto A."
-    : navigation.selectionMode === "destination"
-      ? "Toca el mapa para colocar el punto B."
-      : "Puedes usar tu GPS para A y seleccionar B tocando el mapa.";
+  const selectingMessage = "Toca el mapa para colocar el destino.";
 
   return (
     <section aria-labelledby="trayecto-heading" className="rounded-2xl border border-brand/15 bg-white p-5 shadow-sm sm:p-6">
@@ -263,29 +280,17 @@ export function TrayectoPanel({
         </div>
       ) : (
         <form className="mt-4 grid gap-4" onSubmit={(event) => void onCalculateRoute(event)}>
-          <p className="text-sm text-muted">Usa tu ubicación o elige A y B haciendo clic en el mapa de avistamientos.</p>
+          <p className="text-sm text-muted">Selecciona el destino en el mapa o búscalo por nombre. El origen se obtiene automáticamente de tu GPS al calcular la ruta.</p>
           {navigation.selectionMode && <p className="m-0 rounded-lg bg-brand-soft/15 px-3 py-2 text-sm font-medium text-brand-strong" role="status">{selectingMessage}</p>}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="rounded-xl border border-line p-3">
-              <p className="mb-2 text-sm font-semibold text-brand-strong">Punto A · partida</p>
-              <p className="mb-3 text-xs text-muted">
-                {navigation.origin ? `${navigation.origin[0].toFixed(5)}, ${navigation.origin[1].toFixed(5)}` : "Sin seleccionar"}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={saving} onClick={() => void usarGpsComoOrigen()} size="sm" variant="secondary">
-                  {saving ? "Buscando GPS…" : "Usar mi GPS"}
-                </Button>
-                <Button onClick={() => elegirPunto("origin")} size="sm" variant="secondary">Elegir A en el mapa</Button>
-              </div>
-            </div>
-            <div className="rounded-xl border border-line p-3">
-              <p className="mb-2 text-sm font-semibold text-brand-strong">Punto B · llegada</p>
-              <p className="mb-3 text-xs text-muted">
-                {navigation.destination ? `${navigation.destination[0].toFixed(5)}, ${navigation.destination[1].toFixed(5)}` : "Sin seleccionar"}
-              </p>
-              <Button onClick={() => elegirPunto("destination")} size="sm" variant="secondary">Elegir B en el mapa</Button>
-            </div>
+          <div className="rounded-xl border border-line p-3">
+            <p className="mb-2 text-sm font-semibold text-brand-strong">Destino</p>
+            <p className="mb-3 text-xs text-muted">
+              {navigation.destination
+                ? `${navigation.destination[0].toFixed(5)}, ${navigation.destination[1].toFixed(5)}`
+                : "Elige un lugar en el mapa o búscalo por texto."}
+            </p>
+            <Button disabled={calculating} onClick={elegirDestino} size="sm" variant="secondary">Elegir destino en el mapa</Button>
           </div>
 
           {navigation.route && (
@@ -296,20 +301,33 @@ export function TrayectoPanel({
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <label className="grid flex-1 gap-1 text-sm font-medium text-brand-strong">
-              Nombre del destino
+              Buscar destino por nombre o dirección
               <input
                 autoComplete="off"
                 className="rounded-lg border border-line-strong px-3 py-2"
+                disabled={calculating}
                 maxLength={100}
-                onChange={(event) => setDestinoNombre(event.target.value)}
+                onChange={(event) => {
+                  setDestinoNombre(event.target.value);
+                  onNavigationChange((current) => ({
+                    ...current,
+                    destination: null,
+                    route: null,
+                    selectionMode: null,
+                    followUser: false,
+                  }));
+                }}
                 placeholder="Ej. Terminal de Punta del Este"
                 value={destinoNombre}
               />
             </label>
-            <Button disabled={calculating || !navigation.origin || !navigation.destination} type="submit">
-              {calculating ? "Calculando…" : navigation.route ? "Recalcular recorrido" : "Calcular recorrido"}
+            <Button disabled={calculating || (!navigation.destination && !destinoNombre.trim())} type="submit">
+              {calculating ? "Obteniendo GPS y calculando…" : navigation.route ? "Recalcular recorrido" : "Calcular recorrido"}
             </Button>
           </div>
+          <p className="m-0 text-xs text-muted">
+            Búsqueda de lugares con <a className="underline" href="https://www.openstreetmap.org/copyright" rel="noreferrer" target="_blank">OpenStreetMap</a>.
+          </p>
           {navigation.route && (
             <Button disabled={saving} onClick={() => void iniciarTrayecto()} type="button">
               {saving ? "Iniciando GPS…" : "Iniciar navegación GPS y alertas"}

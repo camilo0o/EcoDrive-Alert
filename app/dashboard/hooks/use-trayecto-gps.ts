@@ -39,7 +39,7 @@ export function useTrayectoGps(trayectoId?: string) {
             body: JSON.stringify({
               trayectoId,
               location,
-              radioMetros: 500,
+              radioMetros: 2000,
             }),
           });
 
