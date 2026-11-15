@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 type Alerta = {
   _id: string;
   mensaje: string;
+  nombreAnimal: string | null;
   distanciaKm: number;
   visto: boolean;
   fechaHora: string;

@@ -1,6 +1,7 @@
 import { connectDB } from "@/lib/db/mongodb";
 import AlertaModel from "@/lib/models/Alerta";
 import AvistamientoModel from "@/lib/models/Avistamiento";
+import EspecieModel from "@/lib/models/Especie";
 import TrayectoModel from "@/lib/models/Trayecto";
 import { EstadoAvistamiento, EstadoTrayecto } from "@/lib/enums";
 import { Types } from "mongoose";
@@ -13,12 +14,43 @@ export type PuntoGps = {
 export type AlertaPublica = {
   _id: string;
   mensaje: string;
+  nombreAnimal: string | null;
   fechaHora: Date;
   distanciaKm: number;
   visto: boolean;
   trayectoId: string;
   avistamientoId: string;
 };
+
+function nombreAnimalDeAvistamiento(avistamiento: unknown): string | null {
+  if (!avistamiento || typeof avistamiento !== "object") return null;
+
+  const especieId = (avistamiento as Record<string, unknown>).especieId;
+  if (!especieId || typeof especieId !== "object") return null;
+
+  const especie = especieId as Record<string, unknown>;
+  if (typeof especie.nombreComun === "string" && especie.nombreComun.trim()) {
+    return especie.nombreComun;
+  }
+  return typeof especie.nombre === "string" && especie.nombre.trim() ? especie.nombre : null;
+}
+
+function populateAvistamiento() {
+  return {
+    path: "avistamientoId",
+    select: "especieId",
+    model: AvistamientoModel,
+    populate: { path: "especieId", select: "nombre nombreComun", model: EspecieModel },
+  };
+}
+
+function idDeReferencia(referencia: unknown): string {
+  if (referencia && typeof referencia === "object" && "_id" in referencia) {
+    const id = (referencia as Record<string, unknown>)._id;
+    if (id !== undefined && id !== referencia) return String(id);
+  }
+  return String(referencia);
+}
 
 const RADIO_ALERTA_METROS = 2000;
 
@@ -43,14 +75,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
 }
 
 function normalizarAlerta(alerta: Record<string, unknown>): AlertaPublica {
+  const avistamiento = alerta.avistamientoId;
+
   return {
     _id: String(alerta._id),
     mensaje: String(alerta.mensaje),
+    nombreAnimal: typeof alerta.nombreAnimal === "string"
+      ? alerta.nombreAnimal
+      : nombreAnimalDeAvistamiento(avistamiento),
     fechaHora: alerta.fechaHora ? new Date(String(alerta.fechaHora)) : new Date(),
     distanciaKm: Number(alerta.distanciaKm ?? 0),
     visto: Boolean(alerta.visto),
-    trayectoId: String(alerta.trayectoId),
-    avistamientoId: String(alerta.avistamientoId),
+    trayectoId: idDeReferencia(alerta.trayectoId),
+    avistamientoId: idDeReferencia(avistamiento),
   };
 }
 
@@ -74,6 +111,7 @@ export async function listarAlertasPorTrayecto(trayectoId: string, usuarioId: st
     visto: false,
   })
     .sort({ fechaHora: -1 })
+    .populate(populateAvistamiento())
     .lean<Record<string, unknown>[]>();
 
   return alertas.map(normalizarAlerta);
@@ -84,6 +122,7 @@ export async function marcarAlertaVista(alertaId: string, usuarioId: string): Pr
 
   const alerta = await AlertaModel.findOne({ _id: new Types.ObjectId(alertaId) })
     .populate("trayectoId", "usuarioId")
+    .populate(populateAvistamiento())
     .lean<Record<string, unknown>>();
 
   if (!alerta) return null;
@@ -94,7 +133,9 @@ export async function marcarAlertaVista(alertaId: string, usuarioId: string): Pr
     { _id: new Types.ObjectId(alertaId) },
     { $set: { visto: true } },
     { returnDocument: "after" },
-  ).lean<Record<string, unknown>>();
+  )
+    .populate(populateAvistamiento())
+    .lean<Record<string, unknown>>();
 
   return actualizada ? normalizarAlerta(actualizada) : null;
 }
@@ -129,6 +170,7 @@ export async function revisarAlertasParaUbicacion(
       },
     },
   })
+    .populate("especieId", "nombre nombreComun", EspecieModel)
     .lean<Record<string, unknown>[]>();
 
   const creadas: AlertaPublica[] = [];
@@ -158,7 +200,10 @@ export async function revisarAlertasParaUbicacion(
       avistamientoId: new Types.ObjectId(avistamientoId),
     });
 
-    creadas.push(normalizarAlerta(alerta.toObject ? alerta.toObject() : alerta));
+    creadas.push(normalizarAlerta({
+      ...(alerta.toObject ? alerta.toObject() : alerta),
+      nombreAnimal: nombreAnimalDeAvistamiento(avistamiento),
+    }));
   }
 
   return { creadas: creadas.length, alertas: creadas };

@@ -79,7 +79,7 @@ describe("alertas de fauna durante el trayecto", () => {
       usuarioId: user._id,
     });
 
-    await AvistamientoModel.create({
+    const avistamiento = await AvistamientoModel.create({
       usuarioId: user._id,
       especieId: especie._id,
       ubicacion: { type: "Point", coordinates: [-56.102, -34.91] },
@@ -100,15 +100,19 @@ describe("alertas de fauna durante el trayecto", () => {
     expect(result.alertas[0]).toMatchObject({
       visto: false,
       trayectoId: String(trayecto._id),
+      avistamientoId: String(avistamiento._id),
+      nombreAnimal: "Carpincho",
       mensaje: "Precaución: avistamiento de fauna en los próximos 2 km",
     });
     expect(await AlertaModel.countDocuments()).toBe(1);
 
     const alertas = await listarAlertasPorTrayecto(String(trayecto._id), String(user._id));
     expect(alertas).toHaveLength(1);
+    expect(alertas[0].nombreAnimal).toBe("Carpincho");
 
     const marcada = await marcarAlertaVista(alertas[0]._id, String(user._id));
     expect(marcada?.visto).toBe(true);
+    expect(marcada?.nombreAnimal).toBe("Carpincho");
     expect(await AlertaModel.findById(alertas[0]._id).lean()).toMatchObject({ visto: true });
 
     const posterior = await revisarAlertasParaUbicacion(

@@ -34,7 +34,12 @@ export function AlertasPanel({ trayectoId, gpsError = "", gpsReady = false }: Pr
         <ul className="space-y-3">
           {alertas.map((alerta) => (
             <li key={alerta._id} className="rounded-lg border border-amber-200 bg-white p-3">
-              <p className="text-sm font-medium text-slate-800">{alerta.mensaje}</p>
+              <article aria-label={`Avistamiento de ${alerta.nombreAnimal ?? "animal no disponible"}`}>
+                <h4 className="text-base font-semibold text-slate-900">
+                  {alerta.nombreAnimal ?? "Animal no disponible"}
+                </h4>
+                <p className="mt-1 text-sm font-medium text-slate-800">{alerta.mensaje}</p>
+              </article>
               <p className="mt-1 text-xs text-slate-500">
                 Aprox. {Number(alerta.distanciaKm).toFixed(1)} km
               </p>
