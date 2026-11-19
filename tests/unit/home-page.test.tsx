@@ -10,6 +10,6 @@ describe("página principal", () => {
 
     expect(screen.getByRole("link", { name: "Iniciar sesión" })).toHaveAttribute("href", "/login");
     expect(screen.getByRole("link", { name: "Crear cuenta" })).toHaveAttribute("href", "/register");
-    expect(screen.getByRole("heading", { name: "Fauna en Ruta" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "EcoDrive Alert" })).toBeVisible();
   });
 });

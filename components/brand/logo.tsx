@@ -8,15 +8,15 @@ type LogoProps = { compactOnMobile?: boolean; href?: string };
 export function Logo({ compactOnMobile = false, href = "/" }: LogoProps) {
   return (
     <Link
-      aria-label="Fauna en Ruta, inicio"
+      aria-label="EcoDrive Alert, inicio"
       className={cn("inline-flex items-center gap-3 rounded-lg text-xl font-bold tracking-tight text-brand-strong", focusRing)}
       href={href}
     >
       <span aria-hidden="true" className="grid size-9 place-items-center rounded-[12px_12px_12px_4px] bg-brand text-lg text-white">
-        F
+        E
       </span>
       <span className={cn(compactOnMobile && "hidden sm:inline")}>
-        Fauna <span className="font-medium">en Ruta</span>
+        EcoDrive <span className="font-medium">Alert</span>
       </span>
     </Link>
   );

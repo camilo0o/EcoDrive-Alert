@@ -1,4 +1,4 @@
-# Fauna en Ruta
+# EcoDrive Alert
 
 Aplicación para consultar y reportar avistamientos de fauna silvestre en las rutas de Uruguay.
 

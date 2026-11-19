@@ -103,7 +103,7 @@ test.afterAll(async () => {
 test("la portada da acceso a registro e inicio de sesión", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Fauna en Ruta" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "EcoDrive Alert" })).toBeVisible();
     await page.getByRole("link", { name: "Crear cuenta" }).click();
     await expect(page).toHaveURL(/\/register$/, { timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Crear cuenta" })).toBeVisible();

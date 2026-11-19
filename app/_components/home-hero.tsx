@@ -12,7 +12,7 @@ export function HomeHero() {
           Cuidamos a quienes comparten la ruta
         </p>
         <h1 className="mt-5 text-5xl font-bold leading-[1.02] tracking-[-0.045em] text-brand-strong sm:text-6xl lg:text-7xl" id="hero-title">
-          Fauna en Ruta
+          EcoDrive Alert
         </h1>
         <p className="mt-6 max-w-xl text-xl font-medium leading-snug text-brand sm:text-2xl">
           Detección, reporte y prevención de fauna silvestre en las rutas de Uruguay.

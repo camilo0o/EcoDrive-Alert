@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fauna en Ruta | Viajes más seguros",
+  title: "EcoDrive Alert | Viajes más seguros",
   description: "Avistamientos de fauna silvestre para conducir con más información en las rutas de Uruguay.",
 };
 

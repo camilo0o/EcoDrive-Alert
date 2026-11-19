@@ -13,7 +13,7 @@ export default function Home() {
       <HomeHero />
       <FeatureList />
       <footer className="flex flex-col gap-3 border-t border-brand/10 py-6 text-sm text-muted sm:flex-row sm:items-center sm:justify-between">
-        <span>Fauna en Ruta, Uruguay</span>
+        <span>EcoDrive Alert, Uruguay</span>
         <Link
           className={cn("inline-flex items-center gap-1.5 rounded-md text-base font-semibold text-brand underline-offset-4 hover:text-brand-accent hover:underline", focusRing)}
           href="/login"

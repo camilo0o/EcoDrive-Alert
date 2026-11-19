@@ -2,7 +2,7 @@
 @import "leaflet/dist/leaflet.css";
 
 /*
-  Design tokens de Fauna en Ruta.
+  Design tokens de EcoDrive Alert.
   Cada --color-* genera utilidades automáticamente:
   --color-brand -> bg-brand, text-brand, border-brand, bg-brand/10, etc.
 */
